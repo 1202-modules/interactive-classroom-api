@@ -1,5 +1,7 @@
 # Interactive Classroom API
 
+> [Русская версия](docs/README-RU.md)
+
 Backend API for the Interactive Classroom Platform - a web application for conducting interactive classes in university auditoriums.
 
 ## Overview
