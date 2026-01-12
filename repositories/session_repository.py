@@ -1,6 +1,6 @@
 """Session repository."""
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from models.session import Session as SessionModel, SessionStatus
 
@@ -120,7 +120,7 @@ class SessionRepository:
             return None
         
         session.is_deleted = True
-        session.deleted_at = datetime.utcnow()
+        session.deleted_at = datetime.now(timezone.utc)
         return session
     
     @staticmethod

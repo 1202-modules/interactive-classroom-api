@@ -1,5 +1,5 @@
 """Authentication service."""
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict
 from sqlalchemy.orm import Session
 from repositories.user_repository import UserRepository
@@ -45,7 +45,7 @@ class AuthService:
         
         # Generate verification code
         verification_code = generate_verification_code()
-        expires_at = datetime.utcnow() + timedelta(minutes=settings.VERIFICATION_CODE_EXPIRE_MINUTES)
+        expires_at = datetime.now(timezone.utc) + timedelta(minutes=settings.VERIFICATION_CODE_EXPIRE_MINUTES)
         
         # Create user
         user = UserRepository.create(
@@ -108,7 +108,7 @@ class AuthService:
             raise ValueError("Invalid verification code")
         
         # Check expiration
-        if not user.verification_code_expires_at or user.verification_code_expires_at < datetime.utcnow():
+        if not user.verification_code_expires_at or user.verification_code_expires_at < datetime.now(timezone.utc):
             raise ValueError("Verification code expired")
         
         # Verify email
@@ -209,7 +209,7 @@ class AuthService:
         
         # Generate new verification code
         verification_code = generate_verification_code()
-        expires_at = datetime.utcnow() + timedelta(minutes=settings.VERIFICATION_CODE_EXPIRE_MINUTES)
+        expires_at = datetime.now(timezone.utc) + timedelta(minutes=settings.VERIFICATION_CODE_EXPIRE_MINUTES)
         
         # Update verification code
         UserRepository.update_verification_code(

@@ -113,7 +113,7 @@ class UserRepository:
             return None
         
         user.is_deleted = True
-        user.deleted_at = datetime.utcnow()
+        user.deleted_at = datetime.now(timezone.utc)
         return user
     
     @staticmethod

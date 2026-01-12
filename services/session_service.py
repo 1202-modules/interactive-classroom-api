@@ -5,7 +5,7 @@ from repositories.session_repository import SessionRepository
 from repositories.workspace_repository import WorkspaceRepository
 from models.session import Session as SessionModel, SessionStatus
 from models.workspace import WorkspaceStatus
-from datetime import datetime
+from datetime import datetime, timezone
 import structlog
 
 logger = structlog.get_logger(__name__)
@@ -49,14 +49,14 @@ class SessionService:
             db=db,
             session_id=session_id,
             status=SessionStatus.ACTIVE.value,
-            start_datetime=datetime.utcnow()
+            start_datetime=datetime.now(timezone.utc)
         )
         
         # Update workspace last_session_at
         WorkspaceRepository.update_stats(
             db=db,
             workspace_id=session.workspace_id,
-            last_session_at=datetime.utcnow()
+            last_session_at=datetime.now(timezone.utc)
         )
         
         # Commit transaction

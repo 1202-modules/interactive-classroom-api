@@ -28,7 +28,7 @@ router = APIRouter(tags=["Authentication"])
     After registration, a verification code will be sent to the provided email.
     The user must verify their email before they can log in.
     
-    **Business Rules:**
+    Business Rules:
     - Email must be unique
     - Password must be at least 8 characters
     - Verification code expires in 15 minutes
@@ -75,7 +75,7 @@ async def register(
     After successful verification, the user will receive an access token
     and can start using the API.
     
-    **Business Rules:**
+    Business Rules:
     - Verification code must match the one sent to email
     - Code expires after 15 minutes
     - Email can only be verified once
@@ -119,7 +119,7 @@ async def verify_email(
     description="""
     Login user with email and password.
     
-    **Business Rules:**
+    Business Rules:
     - Email must be verified before login
     - Invalid credentials will return 401
     """,
@@ -162,7 +162,7 @@ async def login(
     description="""
     Resend verification code to user email.
     
-    **Business Rules:**
+    Business Rules:
     - Can only be used if email is not yet verified
     - New code expires in 15 minutes
     """,

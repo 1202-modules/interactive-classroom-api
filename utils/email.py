@@ -31,7 +31,14 @@ def send_verification_email(email: str, code: str) -> bool:
     """
     if not all([settings.SMTP_HOST, settings.SMTP_USER, settings.SMTP_PASSWORD, settings.SMTP_FROM_EMAIL]):
         logger.warning("Email configuration not set, skipping email send", email=email)
-        # In development, just log the code
+        # In development, print code to console for easy access
+        print("\n" + "="*60)
+        print(f"🔐 VERIFICATION CODE (DEV MODE)")
+        print("="*60)
+        print(f"Email: {email}")
+        print(f"Code: {code}")
+        print(f"Expires in: {settings.VERIFICATION_CODE_EXPIRE_MINUTES} minutes")
+        print("="*60 + "\n")
         logger.info("Verification code (dev mode)", email=email, code=code)
         return True
     

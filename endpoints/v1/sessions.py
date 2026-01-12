@@ -75,7 +75,7 @@ async def list_sessions(
 
 
 @router.get(
-    "/{session_id}",
+    "/sessions/{session_id}",
     response_model=SessionResponse,
     summary="Get session details",
     description="Get detailed information about a specific session.",
@@ -160,7 +160,6 @@ async def create_session(
         )
         
         # Update workspace session count
-        from repositories.workspace_repository import WorkspaceRepository
         workspace_sessions = SessionRepository.get_by_workspace_id(db, workspace_id)
         WorkspaceRepository.update_stats(
             db=db,
@@ -183,7 +182,7 @@ async def create_session(
 
 
 @router.put(
-    "/{session_id}",
+    "/sessions/{session_id}",
     response_model=SessionResponse,
     summary="Update session",
     description="Update an existing session.",
@@ -241,7 +240,7 @@ async def update_session(
 
 
 @router.delete(
-    "/{session_id}",
+    "/sessions/{session_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Delete session",
     description="Soft delete a session (moves to trash).",
@@ -288,7 +287,7 @@ async def delete_session(
 
 
 @router.post(
-    "/{session_id}/start",
+    "/sessions/{session_id}/start",
     response_model=SessionResponse,
     summary="Start session",
     description="Start a session (set status to active and record start time).",
@@ -335,7 +334,7 @@ async def start_session(
 
 
 @router.post(
-    "/{session_id}/stop",
+    "/sessions/{session_id}/stop",
     response_model=SessionResponse,
     summary="Stop session",
     description="Stop a session (set status to ended).",
@@ -381,7 +380,7 @@ async def stop_session(
 
 
 @router.post(
-    "/{session_id}/restore",
+    "/sessions/{session_id}/restore",
     response_model=SessionResponse,
     summary="Restore session from trash",
     description="Restore a session from trash (undo soft delete).",
@@ -427,7 +426,7 @@ async def restore_session(
 
 
 @router.delete(
-    "/{session_id}/permanent",
+    "/sessions/{session_id}/permanent",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Permanently delete session",
     description="Permanently delete a session (hard delete). This action cannot be undone.",

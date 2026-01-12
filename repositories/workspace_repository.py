@@ -1,6 +1,6 @@
 """Workspace repository."""
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from models.workspace import Workspace, WorkspaceStatus
 
@@ -126,7 +126,7 @@ class WorkspaceRepository:
             return None
         
         workspace.is_deleted = True
-        workspace.deleted_at = datetime.utcnow()
+        workspace.deleted_at = datetime.now(timezone.utc)
         return workspace
     
     @staticmethod

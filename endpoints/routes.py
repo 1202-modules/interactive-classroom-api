@@ -8,5 +8,9 @@ api_router = APIRouter()
 api_router.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
 api_router.include_router(users.router, prefix="/api/v1/users", tags=["Users"])
 api_router.include_router(workspaces.router, prefix="/api/v1/workspaces", tags=["Workspaces"])
+
+# Sessions router - includes both workspace sessions and individual session operations
+# Workspace sessions routes: /api/v1/workspaces/{workspace_id}/sessions
+# Individual session routes: /api/v1/sessions/{session_id}/*
 api_router.include_router(sessions.router, prefix="/api/v1", tags=["Sessions"])
 

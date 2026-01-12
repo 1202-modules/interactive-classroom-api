@@ -38,23 +38,21 @@ app = FastAPI(
     title=settings.API_TITLE,
     version=settings.API_VERSION,
     description="""
-    ## Interactive Classroom Platform API
+    Interactive Classroom Platform API
     
     API for managing interactive classroom sessions, workspaces, and user accounts.
     
-    ### Features
+    Features:
     
-    - **User Management**: Registration, email verification, and profile management
-    - **Workspace Management**: Create and manage workspaces for organizing sessions
-    - **Session Management**: Create, start, stop, and manage interactive sessions
+    - User Management: Registration, email verification, and profile management
+    - Workspace Management: Create and manage workspaces for organizing sessions
+    - Session Management: Create, start, stop, and manage interactive sessions
     
-    ### Authentication
+    Authentication:
     
     Most endpoints require JWT authentication. Include the token in the Authorization header:
     
-    ```
     Authorization: Bearer <your-token>
-    ```
     """,
     openapi_tags=[
         {
