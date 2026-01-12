@@ -10,11 +10,11 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 # Import models and Base
-from api.core.db import Base
-from api.models.user import User
-from api.models.workspace import Workspace
-from api.models.session import Session
-from api.core.config import settings
+from core.db import Base
+from models.user import User
+from models.workspace import Workspace
+from models.session import Session
+from core.config import settings
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

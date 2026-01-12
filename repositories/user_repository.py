@@ -2,8 +2,8 @@
 from typing import List, Optional
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
-from api.models.user import User
-from api.core.config import settings
+from models.user import User
+from core.config import settings
 
 
 class UserRepository:

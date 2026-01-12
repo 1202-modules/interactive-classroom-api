@@ -1,8 +1,8 @@
 """User service."""
 from typing import Optional
 from sqlalchemy.orm import Session
-from api.repositories.user_repository import UserRepository
-from api.models.user import User
+from repositories.user_repository import UserRepository
+from models.user import User
 import structlog
 
 logger = structlog.get_logger(__name__)

@@ -2,7 +2,7 @@
 from typing import List, Optional
 from datetime import datetime
 from sqlalchemy.orm import Session
-from api.models.workspace import Workspace, WorkspaceStatus
+from models.workspace import Workspace, WorkspaceStatus
 
 
 class WorkspaceRepository:

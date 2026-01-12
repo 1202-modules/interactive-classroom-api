@@ -1,9 +1,17 @@
 """Main API application."""
+import sys
+import os
+
+# Add parent directory to path for imports
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from api.core.config import settings
-from api.endpoints.routes import api_router
+
+# Use absolute imports with explicit path
+from core.config import settings
+from endpoints.routes import api_router
 
 # Configure structured logging
 structlog.configure(

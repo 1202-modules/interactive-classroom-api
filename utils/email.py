@@ -5,7 +5,7 @@ import string
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import Optional
-from api.core.config import settings
+from core.config import settings
 import structlog
 
 logger = structlog.get_logger(__name__)

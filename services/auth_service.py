@@ -2,11 +2,11 @@
 from datetime import datetime, timedelta
 from typing import Optional, Dict
 from sqlalchemy.orm import Session
-from api.repositories.user_repository import UserRepository
-from api.utils.password import hash_password, verify_password
-from api.utils.email import generate_verification_code, send_verification_email
-from api.core.auth import create_access_token
-from api.core.config import settings
+from repositories.user_repository import UserRepository
+from utils.password import hash_password, verify_password
+from utils.email import generate_verification_code, send_verification_email
+from core.auth import create_access_token
+from core.config import settings
 import structlog
 
 logger = structlog.get_logger(__name__)

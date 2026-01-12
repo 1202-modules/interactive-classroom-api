@@ -2,12 +2,12 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import Optional
-from api.core.db import get_db
-from api.core.auth import get_current_user
-from api.repositories.session_repository import SessionRepository
-from api.repositories.workspace_repository import WorkspaceRepository
-from api.services.session_service import SessionService
-from api.endpoints.v1.schemas import (
+from core.db import get_db
+from core.auth import get_current_user
+from repositories.session_repository import SessionRepository
+from repositories.workspace_repository import WorkspaceRepository
+from services.session_service import SessionService
+from endpoints.v1.schemas import (
     SessionResponse, SessionListResponse,
     SessionCreateRequest, SessionUpdateRequest,
     MessageResponse
@@ -160,7 +160,7 @@ async def create_session(
         )
         
         # Update workspace session count
-        from api.repositories.workspace_repository import WorkspaceRepository
+        from repositories.workspace_repository import WorkspaceRepository
         workspace_sessions = SessionRepository.get_by_workspace_id(db, workspace_id)
         WorkspaceRepository.update_stats(
             db=db,

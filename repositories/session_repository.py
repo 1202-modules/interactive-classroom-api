@@ -2,7 +2,7 @@
 from typing import List, Optional
 from datetime import datetime
 from sqlalchemy.orm import Session
-from api.models.session import Session as SessionModel, SessionStatus
+from models.session import Session as SessionModel, SessionStatus
 
 
 class SessionRepository:

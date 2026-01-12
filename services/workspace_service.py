@@ -1,10 +1,10 @@
 """Workspace service."""
 from typing import List, Optional
 from sqlalchemy.orm import Session
-from api.repositories.workspace_repository import WorkspaceRepository
-from api.repositories.session_repository import SessionRepository
-from api.models.workspace import Workspace, WorkspaceStatus
-from api.models.session import SessionStatus
+from repositories.workspace_repository import WorkspaceRepository
+from repositories.session_repository import SessionRepository
+from models.workspace import Workspace, WorkspaceStatus
+from models.session import SessionStatus
 from datetime import datetime
 import structlog
 

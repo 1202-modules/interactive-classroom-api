@@ -1,6 +1,6 @@
 """Main API router."""
 from fastapi import APIRouter
-from api.endpoints.v1 import auth, users, workspaces, sessions
+from endpoints.v1 import auth, users, workspaces, sessions
 
 api_router = APIRouter()
 
