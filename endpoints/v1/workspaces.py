@@ -6,7 +6,7 @@ from api.core.db import get_db
 from api.core.auth import get_current_user
 from api.repositories.workspace_repository import WorkspaceRepository
 from api.services.workspace_service import WorkspaceService
-from api.api.v1.schemas import (
+from api.endpoints.v1.schemas import (
     WorkspaceResponse, WorkspaceListResponse,
     WorkspaceCreateRequest, WorkspaceUpdateRequest,
     MessageResponse

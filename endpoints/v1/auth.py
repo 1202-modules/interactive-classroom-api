@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from api.core.db import get_db
 from api.services.auth_service import AuthService
-from api.api.v1.schemas import (
+from api.endpoints.v1.schemas import (
     RegisterRequest, RegisterResponse,
     VerifyEmailRequest, VerifyEmailResponse,
     LoginRequest, LoginResponse,

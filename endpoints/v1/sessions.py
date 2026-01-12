@@ -7,7 +7,7 @@ from api.core.auth import get_current_user
 from api.repositories.session_repository import SessionRepository
 from api.repositories.workspace_repository import WorkspaceRepository
 from api.services.session_service import SessionService
-from api.api.v1.schemas import (
+from api.endpoints.v1.schemas import (
     SessionResponse, SessionListResponse,
     SessionCreateRequest, SessionUpdateRequest,
     MessageResponse

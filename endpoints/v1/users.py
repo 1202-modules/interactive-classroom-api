@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from api.core.db import get_db
 from api.core.auth import get_current_user
 from api.services.user_service import UserService
-from api.api.v1.schemas import UserResponse, UserUpdateRequest
+from api.endpoints.v1.schemas import UserResponse, UserUpdateRequest
 import structlog
 
 logger = structlog.get_logger(__name__)
