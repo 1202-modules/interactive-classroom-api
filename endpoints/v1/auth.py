@@ -148,9 +148,11 @@ async def login(
     except ValueError as e:
         logger.warning("login_failed", email=login_data.email, error=str(e))
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail=str(e)
         )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error("login_error", email=login_data.email, error=str(e), exc_info=True)
         raise HTTPException(
