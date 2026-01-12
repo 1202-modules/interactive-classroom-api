@@ -105,6 +105,39 @@ async def health():
 @app.on_event("startup")
 async def startup_event():
     """Startup event handler."""
+    # Apply database migrations
+    try:
+        from alembic.config import Config
+        from alembic import command
+        from sqlalchemy import text
+        import time
+        
+        # Wait for database to be ready
+        max_retries = 30
+        retry_count = 0
+        while retry_count < max_retries:
+            try:
+                from core.db import engine
+                with engine.connect() as conn:
+                    conn.execute(text("SELECT 1"))
+                    conn.commit()
+                break
+            except Exception as e:
+                retry_count += 1
+                if retry_count >= max_retries:
+                    logger.error("database_connection_failed", retries=max_retries, error=str(e))
+                    raise
+                time.sleep(1)
+        
+        # Run migrations
+        alembic_cfg = Config("alembic.ini")
+        command.upgrade(alembic_cfg, "head")
+        logger.info("database_migrations_applied")
+    except Exception as e:
+        logger.error("migration_error", error=str(e), exc_info=True)
+        # Don't fail startup if migrations fail - might be permission issue
+        # But log it clearly
+    
     logger.info("api_started", version=settings.API_VERSION)
 
 
