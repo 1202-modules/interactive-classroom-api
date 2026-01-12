@@ -1,8 +1,12 @@
 """Main API router."""
 from fastapi import APIRouter
+from endpoints import health
 from endpoints.v1 import auth, users, workspaces, sessions
 
 api_router = APIRouter()
+
+# Include health check router
+api_router.include_router(health.router)
 
 # Include sub-routers
 api_router.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])

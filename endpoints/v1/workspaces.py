@@ -50,6 +50,8 @@ async def list_workspaces(
             workspaces=[WorkspaceResponse.model_validate(w) for w in workspaces],
             total=len(workspaces)
         )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error("list_workspaces_error", user_id=current_user["user_id"], error=str(e), exc_info=True)
         raise HTTPException(
@@ -127,6 +129,8 @@ async def create_workspace(
             session_settings=workspace_data.session_settings
         )
         return WorkspaceResponse.model_validate(workspace)
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error("create_workspace_error", user_id=current_user["user_id"], error=str(e), exc_info=True)
         raise HTTPException(

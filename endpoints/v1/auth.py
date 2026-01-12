@@ -57,6 +57,8 @@ async def register(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error("registration_error", email=register_data.email, error=str(e), exc_info=True)
         raise HTTPException(
@@ -104,6 +106,8 @@ async def verify_email(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error("email_verification_error", email=verify_data.email, error=str(e), exc_info=True)
         raise HTTPException(
@@ -188,6 +192,8 @@ async def resend_code(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error("resend_code_error", email=resend_data.email, error=str(e), exc_info=True)
         raise HTTPException(
