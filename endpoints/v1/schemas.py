@@ -56,6 +56,14 @@ class ResendCodeResponse(BaseModel):
     verification_code_sent: bool = Field(..., description="Whether verification code was sent")
 
 
+class RefreshResponse(BaseModel):
+    """Schema for refresh token response."""
+    access_token: str = Field(..., description="New JWT access token")
+    token_type: str = Field(default="bearer", description="Token type")
+    user_id: int = Field(..., description="User ID")
+    email: str = Field(..., description="User email")
+
+
 # User Schemas
 class UserResponse(BaseModel):
     """Schema for user response."""

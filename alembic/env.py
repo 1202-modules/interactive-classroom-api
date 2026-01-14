@@ -14,6 +14,7 @@ from core.db import Base
 from models.user import User
 from models.workspace import Workspace
 from models.session import Session
+from models.refresh_token import RefreshToken
 from core.config import settings
 
 # this is the Alembic Config object, which provides

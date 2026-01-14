@@ -1,13 +1,15 @@
 """Authentication endpoints."""
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
 from sqlalchemy.orm import Session
 from core.db import get_db
+from core.config import settings
 from services.auth_service import AuthService
 from endpoints.v1.schemas import (
     RegisterRequest, RegisterResponse,
     VerifyEmailRequest, VerifyEmailResponse,
     LoginRequest, LoginResponse,
     ResendCodeRequest, ResendCodeResponse,
+    RefreshResponse,
     MessageResponse, ErrorResponse
 )
 import structlog
@@ -123,9 +125,12 @@ async def verify_email(
     description="""
     Login user with email and password.
     
+    Returns access token in JSON response and refresh token in HTTP-only cookie.
+    
     Business Rules:
     - Email must be verified before login
     - Invalid credentials will return 401
+    - Refresh token is stored in HTTP-only cookie (not accessible via JavaScript)
     """,
     responses={
         200: {"description": "Login successful"},
@@ -135,15 +140,27 @@ async def verify_email(
 )
 async def login(
     login_data: LoginRequest,
+    response: Response,
     db: Session = Depends(get_db)
 ):
     """Login user."""
     try:
-        result = AuthService.login(
+        result, refresh_token, expires_at = AuthService.login(
             db=db,
             email=login_data.email,
             password=login_data.password
         )
+        
+        # Set refresh token in HTTP-only cookie
+        response.set_cookie(
+            key=settings.COOKIE_NAME,
+            value=refresh_token,
+            max_age=settings.COOKIE_MAX_AGE,
+            httponly=settings.COOKIE_HTTP_ONLY,
+            secure=settings.COOKIE_SECURE,
+            samesite=settings.COOKIE_SAME_SITE
+        )
+        
         return LoginResponse(**result)
     except ValueError as e:
         logger.warning("login_failed", email=login_data.email, error=str(e))
@@ -198,6 +215,153 @@ async def resend_code(
         raise
     except Exception as e:
         logger.error("resend_code_error", email=resend_data.email, error=str(e), exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error"
+        )
+
+
+@router.post(
+    "/refresh",
+    response_model=RefreshResponse,
+    summary="Refresh access token",
+    description="""
+    Refresh access token using refresh token from HTTP-only cookie.
+    
+    Business Rules:
+    - Refresh token is read from cookie (not from request body)
+    - Old refresh token is revoked and new one is issued (token rotation)
+    - Returns new access token in JSON and new refresh token in cookie
+    - Invalid/expired refresh token returns 401
+    """,
+    responses={
+        200: {"description": "Token refreshed successfully"},
+        401: {"description": "Invalid or expired refresh token"},
+        403: {"description": "Refresh token revoked"}
+    }
+)
+async def refresh(
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db)
+):
+    """Refresh access token."""
+    try:
+        # Get refresh token from cookie
+        refresh_token = request.cookies.get(settings.COOKIE_NAME)
+        if not refresh_token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Refresh token not found"
+            )
+        
+        # Refresh access token
+        result, new_refresh_token, expires_at = AuthService.refresh_access_token(
+            db=db,
+            refresh_token=refresh_token
+        )
+        
+        # Set new refresh token in HTTP-only cookie
+        response.set_cookie(
+            key=settings.COOKIE_NAME,
+            value=new_refresh_token,
+            max_age=settings.COOKIE_MAX_AGE,
+            httponly=settings.COOKIE_HTTP_ONLY,
+            secure=settings.COOKIE_SECURE,
+            samesite=settings.COOKIE_SAME_SITE
+        )
+        
+        return RefreshResponse(**result)
+    except ValueError as e:
+        logger.warning("token_refresh_failed", error=str(e))
+        # Clear cookie on error
+        response.delete_cookie(
+            key=settings.COOKIE_NAME,
+            httponly=settings.COOKIE_HTTP_ONLY,
+            secure=settings.COOKIE_SECURE,
+            samesite=settings.COOKIE_SAME_SITE
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(e)
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("token_refresh_error", error=str(e), exc_info=True)
+        # Clear cookie on error
+        response.delete_cookie(
+            key=settings.COOKIE_NAME,
+            httponly=settings.COOKIE_HTTP_ONLY,
+            secure=settings.COOKIE_SECURE,
+            samesite=settings.COOKIE_SAME_SITE
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error"
+        )
+
+
+@router.post(
+    "/logout",
+    response_model=MessageResponse,
+    summary="Logout user",
+    description="""
+    Logout user by revoking refresh token and clearing cookie.
+    
+    Business Rules:
+    - Refresh token is revoked in database
+    - Cookie is cleared from browser
+    - Access token remains valid until expiration (stateless)
+    """,
+    responses={
+        200: {"description": "Logout successful"},
+        401: {"description": "Refresh token not found"}
+    }
+)
+async def logout(
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db)
+):
+    """Logout user."""
+    try:
+        # Get refresh token from cookie
+        refresh_token = request.cookies.get(settings.COOKIE_NAME)
+        if not refresh_token:
+            # If no token, still return success (idempotent)
+            response.delete_cookie(
+                key=settings.COOKIE_NAME,
+                httponly=settings.COOKIE_HTTP_ONLY,
+                secure=settings.COOKIE_SECURE,
+                samesite=settings.COOKIE_SAME_SITE
+            )
+            return MessageResponse(message="Logged out successfully")
+        
+        # Revoke refresh token
+        AuthService.logout(db=db, refresh_token=refresh_token)
+        
+        # Clear cookie
+        response.delete_cookie(
+            key=settings.COOKIE_NAME,
+            httponly=settings.COOKIE_HTTP_ONLY,
+            secure=settings.COOKIE_SECURE,
+            samesite=settings.COOKIE_SAME_SITE
+        )
+        
+        logger.info("user_logged_out")
+        return MessageResponse(message="Logged out successfully")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("logout_error", error=str(e), exc_info=True)
+        # Clear cookie even on error
+        response.delete_cookie(
+            key=settings.COOKIE_NAME,
+            httponly=settings.COOKIE_HTTP_ONLY,
+            secure=settings.COOKIE_SECURE,
+            samesite=settings.COOKIE_SAME_SITE
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error"

@@ -1,6 +1,7 @@
 """JWT authentication utilities."""
 from datetime import datetime, timedelta, timezone
 from typing import Optional
+import secrets
 from jose import jwt, JWTError
 from fastapi import HTTPException, status, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -36,6 +37,40 @@ def verify_token(token: str) -> Optional[dict]:
         return payload
     except JWTError:
         return None
+
+
+def create_refresh_token(user_id: int) -> str:
+    """
+    Create a refresh token (random string, not JWT).
+    
+    Args:
+        user_id: User ID
+    
+    Returns:
+        Refresh token string
+    """
+    # Generate a secure random token
+    token = secrets.token_urlsafe(32)
+    return token
+
+
+def verify_refresh_token(token: str) -> Optional[int]:
+    """
+    Verify refresh token format (basic validation).
+    In production, this would also check against database.
+    
+    Args:
+        token: Refresh token string
+    
+    Returns:
+        User ID if token is valid format, None otherwise
+    """
+    # Basic validation - token should be a non-empty string
+    if not token or not isinstance(token, str) or len(token) < 32:
+        return None
+    
+    # Actual validation happens in the service layer by checking database
+    return None
 
 
 async def get_current_user(

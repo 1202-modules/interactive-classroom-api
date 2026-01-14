@@ -22,6 +22,14 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "your-secret-key-change-in-production"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 720
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+    
+    # Cookie settings
+    COOKIE_NAME: str = "refresh-token"
+    COOKIE_HTTP_ONLY: bool = True
+    COOKIE_SECURE: bool = True  # Set to True in production (HTTPS only)
+    COOKIE_SAME_SITE: str = "lax"  # Options: "strict", "lax", "none"
+    COOKIE_MAX_AGE: int = 604800  # 7 days in seconds
     
     # Email (for verification codes)
     SMTP_HOST: Optional[str] = None
