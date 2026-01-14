@@ -13,7 +13,6 @@ class RegisterRequest(BaseModel):
 
 class RegisterResponse(BaseModel):
     """Schema for registration response."""
-    user_id: int = Field(..., description="User ID")
     email: str = Field(..., description="User email")
     verification_code_sent: bool = Field(..., description="Whether verification code was sent")
 

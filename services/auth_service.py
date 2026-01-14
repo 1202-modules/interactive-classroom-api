@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Tuple
 from sqlalchemy.orm import Session
 from repositories.user_repository import UserRepository
+from repositories.pending_registration_repository import PendingRegistrationRepository
 from repositories.refresh_token_repository import RefreshTokenRepository
 from utils.password import hash_password, verify_password
 from utils.email import generate_verification_code, send_verification_email
@@ -23,7 +24,7 @@ class AuthService:
         password: str
     ) -> Dict[str, any]:
         """
-        Register a new user.
+        Register a new user (pending registration until email verified).
         
         Args:
             db: Database session
@@ -31,15 +32,20 @@ class AuthService:
             password: User password
         
         Returns:
-            Dict with user_id and verification_code_sent status
+            Dict with email and verification_code_sent status
         
         Raises:
-            ValueError: If email already exists
+            ValueError: If email already exists (in users or pending registrations)
         """
-        # Check if user already exists
+        # Check if user already exists in users table
         existing_user = UserRepository.get_by_email(db, email)
         if existing_user:
             raise ValueError(f"User with email {email} already exists")
+        
+        # Check if pending registration already exists
+        existing_pending = PendingRegistrationRepository.get_by_email(db, email)
+        if existing_pending:
+            raise ValueError(f"Registration with email {email} is already pending. Please verify your email or wait for the code to expire.")
         
         # Hash password
         password_hash = hash_password(password)
@@ -48,8 +54,8 @@ class AuthService:
         verification_code = generate_verification_code()
         expires_at = datetime.now(timezone.utc) + timedelta(minutes=settings.VERIFICATION_CODE_EXPIRE_MINUTES)
         
-        # Create user
-        user = UserRepository.create(
+        # Create pending registration (not in users table yet)
+        pending_reg = PendingRegistrationRepository.create(
             db=db,
             email=email,
             password_hash=password_hash,
@@ -57,23 +63,18 @@ class AuthService:
             verification_code_expires_at=expires_at
         )
         
-        # Commit transaction
-        db.commit()
-        db.refresh(user)
-        
         # Send verification email
         email_sent = send_verification_email(email, verification_code)
         
         logger.info(
-            "user_registered",
-            user_id=user.id,
+            "pending_registration_created",
+            pending_reg_id=pending_reg.id,
             email=email,
             email_sent=email_sent
         )
         
         return {
-            "user_id": user.id,
-            "email": user.email,
+            "email": email,
             "verification_code_sent": email_sent
         }
     
@@ -84,7 +85,7 @@ class AuthService:
         code: str
     ) -> Dict[str, any]:
         """
-        Verify user email with code.
+        Verify user email with code and create user in users table.
         
         Args:
             db: Database session
@@ -95,29 +96,39 @@ class AuthService:
             Dict with success status and access token
         
         Raises:
-            ValueError: If user not found, code invalid, or expired
+            ValueError: If pending registration not found, code invalid, or expired
         """
-        user = UserRepository.get_by_email(db, email)
-        if not user:
-            raise ValueError("User not found")
-        
-        if user.email_verified:
-            raise ValueError("Email already verified")
-        
-        # Check verification code
-        if not user.verification_code or user.verification_code != code:
-            raise ValueError("Invalid verification code")
+        # Get pending registration
+        pending_reg = PendingRegistrationRepository.get_by_email_and_code(db, email, code)
+        if not pending_reg:
+            # Check if user already exists (already verified)
+            existing_user = UserRepository.get_by_email(db, email)
+            if existing_user and existing_user.email_verified:
+                raise ValueError("Email already verified")
+            raise ValueError("Invalid verification code or email not found")
         
         # Check expiration
-        if not user.verification_code_expires_at or user.verification_code_expires_at < datetime.now(timezone.utc):
+        if pending_reg.verification_code_expires_at < datetime.now(timezone.utc):
             raise ValueError("Verification code expired")
         
-        # Verify email
-        UserRepository.verify_email(db, user.id)
+        # Create user in users table (email is now verified)
+        user = UserRepository.create(
+            db=db,
+            email=pending_reg.email,
+            password_hash=pending_reg.password_hash,
+            verification_code=None,  # No longer needed
+            verification_code_expires_at=None
+        )
         
-        # Commit transaction
+        # Mark email as verified immediately
+        user.email_verified = True
+        
+        # Commit user creation
         db.commit()
         db.refresh(user)
+        
+        # Delete pending registration
+        PendingRegistrationRepository.delete(db, pending_reg.id)
         
         # Generate access token
         access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -213,34 +224,34 @@ class AuthService:
             Dict with verification_code_sent status
         
         Raises:
-            ValueError: If user not found or already verified
+            ValueError: If pending registration not found or email already verified
         """
-        user = UserRepository.get_by_email(db, email)
-        if not user:
-            raise ValueError("User not found")
-        
-        if user.email_verified:
+        # Check if user already exists and verified
+        existing_user = UserRepository.get_by_email(db, email)
+        if existing_user and existing_user.email_verified:
             raise ValueError("Email already verified")
+        
+        # Get pending registration
+        pending_reg = PendingRegistrationRepository.get_by_email(db, email)
+        if not pending_reg:
+            raise ValueError("Pending registration not found. Please register first.")
         
         # Generate new verification code
         verification_code = generate_verification_code()
         expires_at = datetime.now(timezone.utc) + timedelta(minutes=settings.VERIFICATION_CODE_EXPIRE_MINUTES)
         
-        # Update verification code
-        UserRepository.update_verification_code(
+        # Update verification code in pending registration
+        PendingRegistrationRepository.update_verification_code(
             db=db,
-            user_id=user.id,
+            email=email,
             verification_code=verification_code,
             verification_code_expires_at=expires_at
         )
         
-        # Commit transaction
-        db.commit()
-        
         # Send verification email
         email_sent = send_verification_email(email, verification_code)
         
-        logger.info("verification_code_resent", user_id=user.id, email=email, email_sent=email_sent)
+        logger.info("verification_code_resent", pending_reg_id=pending_reg.id, email=email, email_sent=email_sent)
         
         return {
             "verification_code_sent": email_sent

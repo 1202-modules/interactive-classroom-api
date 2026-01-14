@@ -1,6 +1,6 @@
 """User repository."""
 from typing import List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 from models.user import User
 from core.config import settings
