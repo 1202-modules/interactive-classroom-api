@@ -74,6 +74,7 @@ async def get_current_user_profile(
 )
 async def update_current_user_profile(
     user_data: UserUpdateRequest,
+    fields: Optional[str] = Query(None, description="Comma-separated list of fields to include. If not specified, returns empty response."),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -88,16 +89,24 @@ async def update_current_user_profile(
         )
         
         if not updated_user:
-            # User exists but no changes were made, return current user
+            # User exists but no changes were made, get current user
             user = UserService.get_profile(db, current_user["user_id"])
             if not user:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="User not found"
                 )
-            return UserResponse.model_validate(user)
+            user_response = UserResponse.model_validate(user)
+        else:
+            user_response = UserResponse.model_validate(updated_user)
         
-        return UserResponse.model_validate(updated_user)
+        # If fields not specified, return empty response
+        fields_set = parse_fields(fields)
+        if not fields_set:
+            return {}
+        
+        filtered_dict = filter_model_response(user_response, fields_set)
+        return filtered_dict
     except HTTPException:
         raise
     except Exception as e:

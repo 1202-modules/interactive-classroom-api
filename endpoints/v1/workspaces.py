@@ -171,6 +171,7 @@ async def create_workspace(
 async def update_workspace(
     workspace_id: int,
     workspace_data: WorkspaceUpdateRequest,
+    fields: Optional[str] = Query(None, description="Comma-separated list of fields to include. If not specified, returns empty response."),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -200,11 +201,16 @@ async def update_workspace(
         
         if updated_workspace:
             db.commit()
-            db.refresh(updated_workspace)
-            return WorkspaceResponse.model_validate(updated_workspace)
-        else:
-            # No changes, return current workspace
-            return WorkspaceResponse.model_validate(workspace)
+            db.refresh(workspace)
+        
+        # If fields not specified, return empty response
+        fields_set = parse_fields(fields)
+        if not fields_set:
+            return {}
+        
+        workspace_response = WorkspaceResponse.model_validate(workspace)
+        filtered_dict = filter_model_response(workspace_response, fields_set)
+        return filtered_dict
     except HTTPException:
         raise
     except Exception as e:
@@ -275,6 +281,7 @@ async def delete_workspace(
 )
 async def archive_workspace(
     workspace_id: int,
+    fields: Optional[str] = Query(None, description="Comma-separated list of fields to include. If not specified, returns empty response."),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -292,7 +299,14 @@ async def archive_workspace(
                 detail=f"Workspace with id {workspace_id} not found"
             )
         
-        return WorkspaceResponse.model_validate(workspace)
+        # If fields not specified, return empty response
+        fields_set = parse_fields(fields)
+        if not fields_set:
+            return {}
+        
+        workspace_response = WorkspaceResponse.model_validate(workspace)
+        filtered_dict = filter_model_response(workspace_response, fields_set)
+        return filtered_dict
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -321,6 +335,7 @@ async def archive_workspace(
 )
 async def unarchive_workspace(
     workspace_id: int,
+    fields: Optional[str] = Query(None, description="Comma-separated list of fields to include. If not specified, returns empty response."),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -338,7 +353,14 @@ async def unarchive_workspace(
                 detail=f"Workspace with id {workspace_id} not found"
             )
         
-        return WorkspaceResponse.model_validate(workspace)
+        # If fields not specified, return empty response
+        fields_set = parse_fields(fields)
+        if not fields_set:
+            return {}
+        
+        workspace_response = WorkspaceResponse.model_validate(workspace)
+        filtered_dict = filter_model_response(workspace_response, fields_set)
+        return filtered_dict
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -367,6 +389,7 @@ async def unarchive_workspace(
 )
 async def restore_workspace(
     workspace_id: int,
+    fields: Optional[str] = Query(None, description="Comma-separated list of fields to include. If not specified, returns empty response."),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -384,7 +407,14 @@ async def restore_workspace(
                 detail=f"Workspace with id {workspace_id} not found"
             )
         
-        return WorkspaceResponse.model_validate(workspace)
+        # If fields not specified, return empty response
+        fields_set = parse_fields(fields)
+        if not fields_set:
+            return {}
+        
+        workspace_response = WorkspaceResponse.model_validate(workspace)
+        filtered_dict = filter_model_response(workspace_response, fields_set)
+        return filtered_dict
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

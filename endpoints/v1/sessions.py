@@ -161,6 +161,7 @@ async def get_session(
 async def create_session(
     workspace_id: int,
     session_data: SessionCreateRequest,
+    fields: Optional[str] = Query(None, description="Comma-separated list of fields to include. If not specified, returns empty response."),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -191,11 +192,20 @@ async def create_session(
         db.commit()
         db.refresh(session)
         
+        # If fields not specified, return empty response
+        fields_set = parse_fields(fields)
+        if not fields_set:
+            return {}
+        
         # Get merged settings for response
         merged_settings = SessionRepository.get_merged_settings(session, workspace.template_settings)
         session_dict = SessionResponse.model_validate(session).model_dump()
         session_dict['settings'] = merged_settings
-        return SessionResponse(**session_dict)
+        session_response = SessionResponse(**session_dict)
+        
+        # Return only specified fields
+        filtered_dict = filter_model_response(session_response, fields_set)
+        return filtered_dict
     except HTTPException:
         raise
     except Exception as e:
@@ -220,6 +230,7 @@ async def create_session(
 async def update_session(
     session_id: int,
     session_data: SessionUpdateRequest,
+    fields: Optional[str] = Query(None, description="Comma-separated list of fields to include. If not specified, returns empty response."),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -264,18 +275,22 @@ async def update_session(
         if updated:
             db.commit()
             db.refresh(session)
-            workspace = WorkspaceRepository.get_by_id(db, session.workspace_id)
-            merged_settings = SessionRepository.get_merged_settings(session, workspace.template_settings if workspace else None)
-            session_dict = SessionResponse.model_validate(session).model_dump()
-            session_dict['settings'] = merged_settings
-            return SessionResponse(**session_dict)
-        else:
-            # No changes, return current session
-            workspace = WorkspaceRepository.get_by_id(db, session.workspace_id)
-            merged_settings = SessionRepository.get_merged_settings(session, workspace.template_settings if workspace else None)
-            session_dict = SessionResponse.model_validate(session).model_dump()
-            session_dict['settings'] = merged_settings
-            return SessionResponse(**session_dict)
+        
+        # If fields not specified, return empty response
+        fields_set = parse_fields(fields)
+        if not fields_set:
+            return {}
+        
+        # Get merged settings for response
+        workspace = WorkspaceRepository.get_by_id(db, session.workspace_id)
+        merged_settings = SessionRepository.get_merged_settings(session, workspace.template_settings if workspace else None)
+        session_dict = SessionResponse.model_validate(session).model_dump()
+        session_dict['settings'] = merged_settings
+        session_response = SessionResponse(**session_dict)
+        
+        # Return only specified fields
+        filtered_dict = filter_model_response(session_response, fields_set)
+        return filtered_dict
     except HTTPException:
         raise
     except Exception as e:
@@ -347,6 +362,7 @@ async def delete_session(
 )
 async def start_session(
     session_id: int,
+    fields: Optional[str] = Query(None, description="Comma-separated list of fields to include. If not specified, returns empty response."),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -364,7 +380,21 @@ async def start_session(
                 detail=f"Session with id {session_id} not found"
             )
         
-        return SessionResponse.model_validate(session)
+        # If fields not specified, return empty response
+        fields_set = parse_fields(fields)
+        if not fields_set:
+            return {}
+        
+        # Get merged settings for response
+        workspace = WorkspaceRepository.get_by_id(db, session.workspace_id)
+        merged_settings = SessionRepository.get_merged_settings(session, workspace.template_settings if workspace else None)
+        session_dict = SessionResponse.model_validate(session).model_dump()
+        session_dict['settings'] = merged_settings
+        session_response = SessionResponse(**session_dict)
+        
+        # Return only specified fields
+        filtered_dict = filter_model_response(session_response, fields_set)
+        return filtered_dict
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -394,6 +424,7 @@ async def start_session(
 async def stop_session(
     session_id: int,
     participant_count: int = Query(0, description="Number of participants at stop time (default 0)"),
+    fields: Optional[str] = Query(None, description="Comma-separated list of fields to include. If not specified, returns empty response."),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -412,7 +443,21 @@ async def stop_session(
                 detail=f"Session with id {session_id} not found"
             )
         
-        return SessionResponse.model_validate(session)
+        # If fields not specified, return empty response
+        fields_set = parse_fields(fields)
+        if not fields_set:
+            return {}
+        
+        # Get merged settings for response
+        workspace = WorkspaceRepository.get_by_id(db, session.workspace_id)
+        merged_settings = SessionRepository.get_merged_settings(session, workspace.template_settings if workspace else None)
+        session_dict = SessionResponse.model_validate(session).model_dump()
+        session_dict['settings'] = merged_settings
+        session_response = SessionResponse(**session_dict)
+        
+        # Return only specified fields
+        filtered_dict = filter_model_response(session_response, fields_set)
+        return filtered_dict
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -441,7 +486,7 @@ async def stop_session(
 )
 async def archive_session(
     session_id: int,
-    fields: Optional[str] = Query(None, description="Comma-separated list of fields to include (e.g., id,name,status)"),
+    fields: Optional[str] = Query(None, description="Comma-separated list of fields to include. If not specified, returns empty response."),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -459,6 +504,11 @@ async def archive_session(
                 detail=f"Session with id {session_id} not found"
             )
         
+        # If fields not specified, return empty response
+        fields_set = parse_fields(fields)
+        if not fields_set:
+            return {}
+        
         # Get merged settings for response
         workspace = WorkspaceRepository.get_by_id(db, session.workspace_id)
         merged_settings = SessionRepository.get_merged_settings(session, workspace.template_settings if workspace else None)
@@ -466,13 +516,9 @@ async def archive_session(
         session_dict['settings'] = merged_settings
         session_response = SessionResponse(**session_dict)
         
-        # Apply fields filter if specified
-        fields_set = parse_fields(fields)
-        if fields_set:
-            filtered_dict = filter_model_response(session_response, fields_set)
-            return filtered_dict
-        
-        return session_response
+        # Return only specified fields
+        filtered_dict = filter_model_response(session_response, fields_set)
+        return filtered_dict
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -502,7 +548,7 @@ async def archive_session(
 )
 async def unarchive_session(
     session_id: int,
-    fields: Optional[str] = Query(None, description="Comma-separated list of fields to include (e.g., id,name,status)"),
+    fields: Optional[str] = Query(None, description="Comma-separated list of fields to include. If not specified, returns empty response."),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -520,6 +566,11 @@ async def unarchive_session(
                 detail=f"Session with id {session_id} not found"
             )
         
+        # If fields not specified, return empty response
+        fields_set = parse_fields(fields)
+        if not fields_set:
+            return {}
+        
         # Get merged settings for response
         workspace = WorkspaceRepository.get_by_id(db, session.workspace_id)
         merged_settings = SessionRepository.get_merged_settings(session, workspace.template_settings if workspace else None)
@@ -527,13 +578,9 @@ async def unarchive_session(
         session_dict['settings'] = merged_settings
         session_response = SessionResponse(**session_dict)
         
-        # Apply fields filter if specified
-        fields_set = parse_fields(fields)
-        if fields_set:
-            filtered_dict = filter_model_response(session_response, fields_set)
-            return filtered_dict
-        
-        return session_response
+        # Return only specified fields
+        filtered_dict = filter_model_response(session_response, fields_set)
+        return filtered_dict
     except ValueError as e:
         status_code = status.HTTP_400_BAD_REQUEST if "archived workspace" in str(e).lower() else status.HTTP_404_NOT_FOUND
         raise HTTPException(
@@ -563,7 +610,7 @@ async def unarchive_session(
 )
 async def restore_session(
     session_id: int,
-    fields: Optional[str] = Query(None, description="Comma-separated list of fields to include (e.g., id,name,status)"),
+    fields: Optional[str] = Query(None, description="Comma-separated list of fields to include. If not specified, returns empty response."),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -581,6 +628,11 @@ async def restore_session(
                 detail=f"Session with id {session_id} not found"
             )
         
+        # If fields not specified, return empty response
+        fields_set = parse_fields(fields)
+        if not fields_set:
+            return {}
+        
         # Get merged settings for response
         workspace = WorkspaceRepository.get_by_id(db, session.workspace_id)
         merged_settings = SessionRepository.get_merged_settings(session, workspace.template_settings if workspace else None)
@@ -588,13 +640,9 @@ async def restore_session(
         session_dict['settings'] = merged_settings
         session_response = SessionResponse(**session_dict)
         
-        # Apply fields filter if specified
-        fields_set = parse_fields(fields)
-        if fields_set:
-            filtered_dict = filter_model_response(session_response, fields_set)
-            return filtered_dict
-        
-        return session_response
+        # Return only specified fields
+        filtered_dict = filter_model_response(session_response, fields_set)
+        return filtered_dict
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
