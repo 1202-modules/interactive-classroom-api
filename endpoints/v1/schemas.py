@@ -95,9 +95,6 @@ class WorkspaceResponse(BaseModel):
     description: Optional[str] = None
     status: str
     session_settings: Optional[Dict[str, Any]] = None
-    session_count: int
-    participant_count: int
-    last_session_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
 
@@ -132,8 +129,9 @@ class SessionResponse(BaseModel):
     workspace_id: int
     name: str
     description: Optional[str] = None
-    participant_count: int
+    stopped_participant_count: int
     start_datetime: Optional[datetime] = None
+    end_datetime: Optional[datetime] = None
     status: str
     created_at: datetime
     updated_at: datetime

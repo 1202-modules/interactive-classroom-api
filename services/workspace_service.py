@@ -76,7 +76,7 @@ class WorkspaceService:
         if workspace.user_id != user_id:
             raise ValueError("Workspace not found or access denied")
         
-        # End all active sessions in workspace
+        # Archive all active sessions in workspace
         active_sessions = SessionRepository.get_by_workspace_id(
             db=db,
             workspace_id=workspace_id,
@@ -87,7 +87,7 @@ class WorkspaceService:
             SessionRepository.update_status(
                 db=db,
                 session_id=session.id,
-                status=SessionStatus.ENDED.value
+                status=SessionStatus.ARCHIVE.value
             )
         
         # Update workspace status

@@ -53,7 +53,7 @@ class SessionRepository:
             workspace_id=workspace_id,
             name=name,
             description=description,
-            status=SessionStatus.DRAFT.value
+            status=SessionStatus.ACTIVE.value
         )
         db.add(session)
         return session
@@ -85,7 +85,9 @@ class SessionRepository:
         db: Session,
         session_id: int,
         status: str,
-        start_datetime: Optional[datetime] = None
+        start_datetime: Optional[datetime] = None,
+        end_datetime: Optional[datetime] = None,
+        clear_end_datetime: bool = False
     ) -> Optional[SessionModel]:
         """Update session status (without commit)."""
         session = SessionRepository.get_by_id(db, session_id)
@@ -95,21 +97,39 @@ class SessionRepository:
         session.status = status
         if start_datetime is not None:
             session.start_datetime = start_datetime
+        if clear_end_datetime:
+            session.end_datetime = None
+        elif end_datetime is not None:
+            session.end_datetime = end_datetime
         
         return session
     
     @staticmethod
-    def update_participant_count(
+    def update_stopped_participant_count(
         db: Session,
         session_id: int,
-        participant_count: int
+        stopped_participant_count: int
     ) -> Optional[SessionModel]:
-        """Update session participant count (without commit)."""
+        """Update session stopped participant count (without commit)."""
         session = SessionRepository.get_by_id(db, session_id)
         if not session:
             return None
         
-        session.participant_count = participant_count
+        session.stopped_participant_count = stopped_participant_count
+        return session
+    
+    @staticmethod
+    def clear_session_run_data(
+        db: Session,
+        session_id: int
+    ) -> Optional[SessionModel]:
+        """Clear end_datetime and stopped_participant_count for session restart (without commit)."""
+        session = SessionRepository.get_by_id(db, session_id)
+        if not session:
+            return None
+        
+        session.end_datetime = None
+        session.stopped_participant_count = 0
         return session
     
     @staticmethod

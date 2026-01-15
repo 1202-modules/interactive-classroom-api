@@ -44,20 +44,22 @@ class SessionService:
         if workspace.status == WorkspaceStatus.ARCHIVE.value:
             raise ValueError("Cannot start session in archived workspace")
         
-        # Update session status
+        # Set start_datetime only if NULL (first start)
+        start_datetime = None
+        if not session.start_datetime:
+            start_datetime = datetime.now(timezone.utc)
+        
+        # Update session: set start_datetime if needed, clear end_datetime
         SessionRepository.update_status(
             db=db,
             session_id=session_id,
             status=SessionStatus.ACTIVE.value,
-            start_datetime=datetime.now(timezone.utc)
+            start_datetime=start_datetime,
+            clear_end_datetime=True
         )
         
-        # Update workspace last_session_at
-        WorkspaceRepository.update_stats(
-            db=db,
-            workspace_id=session.workspace_id,
-            last_session_at=datetime.now(timezone.utc)
-        )
+        # Clear stopped_participant_count
+        SessionRepository.clear_session_run_data(db=db, session_id=session_id)
         
         # Commit transaction
         db.commit()
@@ -71,7 +73,8 @@ class SessionService:
     def stop_session(
         db: Session,
         session_id: int,
-        user_id: int
+        user_id: int,
+        participant_count: int = 0
     ) -> Optional[SessionModel]:
         """
         Stop a session.
@@ -80,6 +83,7 @@ class SessionService:
             db: Database session
             session_id: Session ID
             user_id: User ID (for authorization check)
+            participant_count: Number of participants at stop time (default 0, TODO for future)
         
         Returns:
             Stopped session or None if not found
@@ -93,11 +97,19 @@ class SessionService:
         if not workspace or workspace.user_id != user_id:
             raise ValueError("Session not found or access denied")
         
-        # Update session status
+        # Set end_datetime and stopped_participant_count, keep status as ACTIVE
         SessionRepository.update_status(
             db=db,
             session_id=session_id,
-            status=SessionStatus.ENDED.value
+            status=SessionStatus.ACTIVE.value,  # Keep status as ACTIVE
+            end_datetime=datetime.now(timezone.utc)
+        )
+        
+        # Set stopped_participant_count
+        SessionRepository.update_stopped_participant_count(
+            db=db,
+            session_id=session_id,
+            stopped_participant_count=participant_count
         )
         
         # Commit transaction

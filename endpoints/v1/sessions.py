@@ -32,7 +32,7 @@ router = APIRouter(tags=["Sessions"])
 )
 async def list_sessions(
     workspace_id: int,
-    status: Optional[str] = Query(None, description="Filter by status (draft, active, ended)"),
+    status: Optional[str] = Query(None, description="Filter by status (active, archive)"),
     include_deleted: bool = Query(False, description="Include deleted sessions"),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
@@ -157,14 +157,6 @@ async def create_session(
             workspace_id=workspace_id,
             name=session_data.name,
             description=session_data.description
-        )
-        
-        # Update workspace session count
-        workspace_sessions = SessionRepository.get_by_workspace_id(db, workspace_id)
-        WorkspaceRepository.update_stats(
-            db=db,
-            workspace_id=workspace_id,
-            session_count=len(workspace_sessions)
         )
         
         db.commit()
@@ -337,7 +329,7 @@ async def start_session(
     "/sessions/{session_id}/stop",
     response_model=SessionResponse,
     summary="Stop session",
-    description="Stop a session (set status to ended).",
+    description="Stop a session (set end_datetime and stopped_participant_count).",
     responses={
         200: {"description": "Session stopped successfully"},
         401: {"description": "Not authenticated"},
@@ -346,6 +338,7 @@ async def start_session(
 )
 async def stop_session(
     session_id: int,
+    participant_count: int = Query(0, description="Number of participants at stop time (default 0)"),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -354,7 +347,8 @@ async def stop_session(
         session = SessionService.stop_session(
             db=db,
             session_id=session_id,
-            user_id=current_user["user_id"]
+            user_id=current_user["user_id"],
+            participant_count=participant_count
         )
         
         if not session:

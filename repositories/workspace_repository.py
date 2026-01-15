@@ -97,28 +97,6 @@ class WorkspaceRepository:
         return workspace
     
     @staticmethod
-    def update_stats(
-        db: Session,
-        workspace_id: int,
-        session_count: Optional[int] = None,
-        participant_count: Optional[int] = None,
-        last_session_at: Optional[datetime] = None
-    ) -> Optional[Workspace]:
-        """Update workspace statistics (without commit)."""
-        workspace = WorkspaceRepository.get_by_id(db, workspace_id)
-        if not workspace:
-            return None
-        
-        if session_count is not None:
-            workspace.session_count = session_count
-        if participant_count is not None:
-            workspace.participant_count = participant_count
-        if last_session_at is not None:
-            workspace.last_session_at = last_session_at
-        
-        return workspace
-    
-    @staticmethod
     def soft_delete(db: Session, workspace_id: int) -> Optional[Workspace]:
         """Soft delete a workspace (without commit)."""
         workspace = WorkspaceRepository.get_by_id(db, workspace_id)
