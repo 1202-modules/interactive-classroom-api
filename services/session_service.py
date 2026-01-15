@@ -1,5 +1,5 @@
 """Session service."""
-from typing import Optional
+from typing import Optional, Dict, Any
 from sqlalchemy.orm import Session
 from repositories.session_repository import SessionRepository
 from repositories.workspace_repository import WorkspaceRepository
@@ -7,6 +7,7 @@ from models.session import Session as SessionModel, SessionStatus
 from models.workspace import WorkspaceStatus
 from datetime import datetime, timezone
 import structlog
+import json
 
 logger = structlog.get_logger(__name__)
 
@@ -40,9 +41,25 @@ class SessionService:
         if not workspace or workspace.user_id != user_id:
             raise ValueError("Session not found or access denied")
         
+        # Check if workspace is deleted
+        if workspace.is_deleted:
+            raise ValueError("Cannot start session in deleted workspace")
+        
         # Check if workspace is archived
         if workspace.status == WorkspaceStatus.ARCHIVE.value:
             raise ValueError("Cannot start session in archived workspace")
+        
+        # Check if session is deleted
+        if session.is_deleted:
+            raise ValueError("Cannot start deleted session")
+        
+        # Check if session is archived
+        if session.status == SessionStatus.ARCHIVE.value:
+            raise ValueError("Cannot start archived session")
+        
+        # Check if session is already started (not stopped)
+        if not session.is_stopped and session.start_datetime:
+            raise ValueError("Cannot start session that is already running")
         
         # Set start_datetime only if NULL (first start)
         start_datetime = None
@@ -100,12 +117,46 @@ class SessionService:
         if not workspace or workspace.user_id != user_id:
             raise ValueError("Session not found or access denied")
         
+        # Check if workspace is deleted
+        if workspace.is_deleted:
+            raise ValueError("Cannot stop session in deleted workspace")
+        
+        # Check if workspace is archived
+        if workspace.status == WorkspaceStatus.ARCHIVE.value:
+            raise ValueError("Cannot stop session in archived workspace")
+        
+        # Check if session is deleted
+        if session.is_deleted:
+            raise ValueError("Cannot stop deleted session")
+        
+        # Check if session is archived
+        if session.status == SessionStatus.ARCHIVE.value:
+            raise ValueError("Cannot stop archived session")
+        
+        # Check if session is already stopped
+        if session.is_stopped:
+            raise ValueError("Cannot stop session that is already stopped")
+        
+        # Check if session was never started
+        if not session.start_datetime:
+            raise ValueError("Cannot stop session that was never started")
+        
+        # Validate participant_count
+        if participant_count < 0:
+            raise ValueError("Participant count cannot be negative")
+        
         # Set end_datetime and stopped_participant_count, keep status as ACTIVE
+        end_datetime = datetime.now(timezone.utc)
+        
+        # Validate end_datetime is not earlier than start_datetime
+        if session.start_datetime and end_datetime < session.start_datetime:
+            raise ValueError("end_datetime cannot be earlier than start_datetime")
+        
         SessionRepository.update_status(
             db=db,
             session_id=session_id,
             status=SessionStatus.ACTIVE.value,  # Keep status as ACTIVE
-            end_datetime=datetime.now(timezone.utc)
+            end_datetime=end_datetime
         )
         
         # Set stopped_participant_count
@@ -143,14 +194,27 @@ class SessionService:
         Returns:
             Restored session or None if not found
         """
-        session = SessionRepository.restore(db, session_id)
+        # Get session including deleted ones
+        session = db.query(SessionModel).filter(
+            SessionModel.id == session_id,
+            SessionModel.is_deleted == True
+        ).first()
+        
         if not session:
+            # Check if session exists but is not deleted
+            existing = db.query(SessionModel).filter(SessionModel.id == session_id).first()
+            if existing and not existing.is_deleted:
+                raise ValueError("Cannot restore session that is not deleted")
             return None
         
         # Check workspace ownership
         workspace = WorkspaceRepository.get_by_id(db, session.workspace_id)
         if not workspace or workspace.user_id != user_id:
             raise ValueError("Session not found or access denied")
+        
+        # Restore session
+        session.is_deleted = False
+        session.deleted_at = None
         
         # Commit transaction
         db.commit()
@@ -187,6 +251,10 @@ class SessionService:
         workspace = WorkspaceRepository.get_by_id(db, session.workspace_id)
         if not workspace or workspace.user_id != user_id:
             raise ValueError("Session not found or access denied")
+        
+        # Check if session is running (not stopped)
+        if not session.is_stopped:
+            raise ValueError("Cannot delete session that is currently running")
         
         # Delete session
         deleted_session = SessionRepository.delete(db, session_id, hard=hard)
@@ -230,6 +298,10 @@ class SessionService:
         if not workspace or workspace.user_id != user_id:
             raise ValueError("Session not found or access denied")
         
+        # Check if session is deleted
+        if session.is_deleted:
+            raise ValueError("Cannot archive deleted session")
+        
         # Update session status to ARCHIVE
         SessionRepository.update_status(
             db=db,
@@ -270,6 +342,10 @@ class SessionService:
         workspace = WorkspaceRepository.get_by_id(db, session.workspace_id)
         if not workspace or workspace.user_id != user_id:
             raise ValueError("Session not found or access denied")
+        
+        # Check if session is deleted
+        if session.is_deleted:
+            raise ValueError("Cannot unarchive deleted session")
         
         # Check if workspace is archived
         if workspace.status == WorkspaceStatus.ARCHIVE.value:
@@ -317,6 +393,18 @@ class SessionService:
         workspace = WorkspaceRepository.get_by_id(db, session.workspace_id)
         if not workspace or workspace.user_id != user_id:
             raise ValueError("Session not found or access denied")
+        
+        # Check if workspace is deleted
+        if workspace.is_deleted:
+            raise ValueError("Cannot update settings for session in deleted workspace")
+        
+        # Check if session is deleted
+        if session.is_deleted:
+            raise ValueError("Cannot update settings for deleted session")
+        
+        # Check if workspace is archived
+        if workspace.status == WorkspaceStatus.ARCHIVE.value:
+            raise ValueError("Cannot update settings for session in archived workspace")
         
         # Update settings with recursive comparison
         SessionRepository.update_settings(

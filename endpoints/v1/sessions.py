@@ -123,6 +123,13 @@ async def get_session(
                 detail="Session not found"
             )
         
+        # Check if workspace is deleted
+        if workspace.is_deleted:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot access session in deleted workspace"
+            )
+        
         # Get merged settings for response
         merged_settings = SessionRepository.get_merged_settings(session, workspace.template_settings)
         session_dict = SessionResponse.model_validate(session).model_dump()
@@ -179,6 +186,26 @@ async def create_session(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Workspace not found"
             )
+        
+        # Check if workspace is deleted
+        if workspace.is_deleted:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot create session in deleted workspace"
+            )
+        
+        # Check if workspace is archived
+        if workspace.status == "archive":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot create session in archived workspace"
+            )
+        
+        # Validate session name
+        SessionService.validate_session_name(session_data.name)
+        
+        # Check for duplicate name
+        SessionService.check_session_name_duplicate(db, workspace_id, session_data.name)
         
         session = SessionRepository.create(
             db=db,
@@ -248,6 +275,26 @@ async def update_session(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Session not found"
             )
+        
+        # Check if session is deleted
+        if session.is_deleted:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot update deleted session"
+            )
+        
+        # Check if workspace is archived
+        if workspace.status == "archive":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot update session in archived workspace"
+            )
+        
+        # Validate session name if provided
+        if session_data.name is not None:
+            SessionService.validate_session_name(session_data.name)
+            # Check for duplicate name
+            SessionService.check_session_name_duplicate(db, session.workspace_id, session_data.name, exclude_session_id=session_id)
         
         updated = False
         updated_session = SessionRepository.update(

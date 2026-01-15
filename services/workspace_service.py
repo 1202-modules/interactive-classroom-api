@@ -1,5 +1,5 @@
 """Workspace service."""
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
 from repositories.workspace_repository import WorkspaceRepository
 from repositories.session_repository import SessionRepository
@@ -7,6 +7,7 @@ from models.workspace import Workspace, WorkspaceStatus
 from models.session import SessionStatus
 from datetime import datetime
 import structlog
+import json
 
 logger = structlog.get_logger(__name__)
 
@@ -35,6 +36,15 @@ class WorkspaceService:
         Returns:
             Created workspace
         """
+        # Validate workspace name
+        WorkspaceService.validate_workspace_name(name)
+        
+        # Check for duplicate name
+        WorkspaceService.check_workspace_name_duplicate(db, user_id, name)
+        
+        # Validate template_settings
+        WorkspaceService.validate_template_settings(template_settings)
+        
         workspace = WorkspaceRepository.create(
             db=db,
             user_id=user_id,
@@ -75,6 +85,10 @@ class WorkspaceService:
         # Check ownership
         if workspace.user_id != user_id:
             raise ValueError("Workspace not found or access denied")
+        
+        # Check if workspace is deleted
+        if workspace.is_deleted:
+            raise ValueError("Cannot archive deleted workspace")
         
         # Archive all active sessions in workspace
         active_sessions = SessionRepository.get_by_workspace_id(
@@ -135,6 +149,10 @@ class WorkspaceService:
         if workspace.user_id != user_id:
             raise ValueError("Workspace not found or access denied")
         
+        # Check if workspace is deleted
+        if workspace.is_deleted:
+            raise ValueError("Cannot unarchive deleted workspace")
+        
         # Update workspace status
         WorkspaceRepository.update_status(
             db=db,
@@ -167,13 +185,26 @@ class WorkspaceService:
         Returns:
             Restored workspace or None if not found
         """
-        workspace = WorkspaceRepository.restore(db, workspace_id)
+        # Get workspace including deleted ones
+        workspace = db.query(Workspace).filter(
+            Workspace.id == workspace_id,
+            Workspace.is_deleted == True
+        ).first()
+        
         if not workspace:
+            # Check if workspace exists but is not deleted
+            existing = db.query(Workspace).filter(Workspace.id == workspace_id).first()
+            if existing and not existing.is_deleted:
+                raise ValueError("Cannot restore workspace that is not deleted")
             return None
         
         # Check ownership
         if workspace.user_id != user_id:
             raise ValueError("Workspace not found or access denied")
+        
+        # Restore workspace
+        workspace.is_deleted = False
+        workspace.deleted_at = None
         
         # Commit transaction
         db.commit()
@@ -209,6 +240,18 @@ class WorkspaceService:
         # Check ownership
         if workspace.user_id != user_id:
             raise ValueError("Workspace not found or access denied")
+        
+        # Check if workspace has active (running) sessions
+        if not hard:
+            active_sessions = SessionRepository.get_by_workspace_id(
+                db=db,
+                workspace_id=workspace_id,
+                status=SessionStatus.ACTIVE.value
+            )
+            # Filter only running sessions (not stopped)
+            running_sessions = [s for s in active_sessions if not s.is_stopped]
+            if running_sessions:
+                raise ValueError(f"Cannot delete workspace with {len(running_sessions)} active running session(s)")
         
         # Delete workspace
         deleted_workspace = WorkspaceRepository.delete(db, workspace_id, hard=hard)
@@ -309,6 +352,20 @@ class WorkspaceService:
         # Check ownership
         if workspace.user_id != user_id:
             raise ValueError("Workspace not found or access denied")
+        
+        # Check if workspace is deleted
+        if workspace.is_deleted:
+            raise ValueError("Cannot update deleted workspace")
+        
+        # Validate workspace name if provided
+        if name is not None:
+            WorkspaceService.validate_workspace_name(name)
+            # Check for duplicate name
+            WorkspaceService.check_workspace_name_duplicate(db, user_id, name, exclude_workspace_id=workspace_id)
+        
+        # Validate template_settings if provided
+        if template_settings is not None:
+            WorkspaceService.validate_template_settings(template_settings)
         
         # Store old template for synchronization
         old_template = workspace.template_settings or {}

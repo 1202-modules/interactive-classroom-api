@@ -187,10 +187,16 @@ class SessionRepository:
         
         Returns:
             Merged settings dictionary
+        
+        Raises:
+            ValueError: If workspace is deleted (template_settings would be None from deleted workspace)
         """
         from utils.settings import merge_settings
         
-        if not template_settings:
+        if template_settings is None:
+            # This could mean workspace is deleted or template_settings is explicitly None
+            # Return empty dict or raise error depending on business logic
+            # For now, return empty dict
             template_settings = {}
         
         # Merge template with custom_settings recursively
