@@ -123,7 +123,6 @@ async def get_workspace(
 
 @router.post(
     "",
-    response_model=WorkspaceResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create workspace",
     description="Create a new workspace for the current user.",
@@ -159,7 +158,6 @@ async def create_workspace(
 
 @router.put(
     "/{workspace_id}",
-    response_model=WorkspaceResponse,
     summary="Update workspace",
     description="Update an existing workspace.",
     responses={
@@ -270,7 +268,6 @@ async def delete_workspace(
 
 @router.post(
     "/{workspace_id}/archive",
-    response_model=WorkspaceResponse,
     summary="Archive workspace",
     description="Archive a workspace and end all active sessions.",
     responses={
@@ -324,7 +321,6 @@ async def archive_workspace(
 
 @router.post(
     "/{workspace_id}/unarchive",
-    response_model=WorkspaceResponse,
     summary="Unarchive workspace",
     description="Unarchive a workspace (restore from archive).",
     responses={
@@ -378,7 +374,6 @@ async def unarchive_workspace(
 
 @router.post(
     "/{workspace_id}/restore",
-    response_model=WorkspaceResponse,
     summary="Restore workspace from trash",
     description="Restore a workspace from trash (undo soft delete).",
     responses={

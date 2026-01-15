@@ -148,7 +148,6 @@ async def get_session(
 
 @router.post(
     "/workspaces/{workspace_id}/sessions",
-    response_model=SessionResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create session",
     description="Create a new session in a workspace.",
@@ -218,7 +217,6 @@ async def create_session(
 
 @router.put(
     "/sessions/{session_id}",
-    response_model=SessionResponse,
     summary="Update session",
     description="Update an existing session.",
     responses={
@@ -350,7 +348,6 @@ async def delete_session(
 
 @router.post(
     "/sessions/{session_id}/start",
-    response_model=SessionResponse,
     summary="Start session",
     description="Start a session (set status to active and record start time).",
     responses={
@@ -412,7 +409,6 @@ async def start_session(
 
 @router.post(
     "/sessions/{session_id}/stop",
-    response_model=SessionResponse,
     summary="Stop session",
     description="Stop a session (set end_datetime and stopped_participant_count).",
     responses={
@@ -475,7 +471,6 @@ async def stop_session(
 
 @router.post(
     "/sessions/{session_id}/archive",
-    response_model=SessionResponse,
     summary="Archive session",
     description="Archive a session (set status to archive).",
     responses={
@@ -536,7 +531,6 @@ async def archive_session(
 
 @router.post(
     "/sessions/{session_id}/unarchive",
-    response_model=SessionResponse,
     summary="Unarchive session",
     description="Unarchive a session (set status to active).",
     responses={
@@ -599,7 +593,6 @@ async def unarchive_session(
 
 @router.post(
     "/sessions/{session_id}/restore",
-    response_model=SessionResponse,
     summary="Restore session from trash",
     description="Restore a session from trash (undo soft delete).",
     responses={

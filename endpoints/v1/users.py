@@ -59,7 +59,6 @@ async def get_current_user_profile(
 
 @router.put(
     "/me",
-    response_model=UserResponse,
     summary="Update current user profile",
     description="""
     Update the profile of the currently authenticated user.
