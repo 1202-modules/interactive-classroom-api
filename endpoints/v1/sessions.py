@@ -127,7 +127,15 @@ async def get_session(
         merged_settings = SessionRepository.get_merged_settings(session, workspace.template_settings)
         session_dict = SessionResponse.model_validate(session).model_dump()
         session_dict['settings'] = merged_settings
-        return SessionResponse(**session_dict)
+        session_response = SessionResponse(**session_dict)
+        
+        # Apply fields filter if specified
+        fields_set = parse_fields(fields)
+        if fields_set:
+            filtered_dict = filter_model_response(session_response, fields_set)
+            return filtered_dict
+        
+        return session_response
     except HTTPException:
         raise
     except Exception as e:
