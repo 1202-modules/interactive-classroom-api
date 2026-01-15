@@ -205,6 +205,92 @@ class SessionService:
         return deleted_session
     
     @staticmethod
+    def archive_session(
+        db: Session,
+        session_id: int,
+        user_id: int
+    ) -> Optional[SessionModel]:
+        """
+        Archive a session.
+        
+        Args:
+            db: Database session
+            session_id: Session ID
+            user_id: User ID (for authorization check)
+        
+        Returns:
+            Archived session or None if not found
+        """
+        session = SessionRepository.get_by_id(db, session_id)
+        if not session:
+            return None
+        
+        # Check workspace ownership
+        workspace = WorkspaceRepository.get_by_id(db, session.workspace_id)
+        if not workspace or workspace.user_id != user_id:
+            raise ValueError("Session not found or access denied")
+        
+        # Update session status to ARCHIVE
+        SessionRepository.update_status(
+            db=db,
+            session_id=session_id,
+            status=SessionStatus.ARCHIVE.value
+        )
+        
+        # Commit transaction
+        db.commit()
+        db.refresh(session)
+        
+        logger.info("session_archived", session_id=session_id, workspace_id=session.workspace_id)
+        
+        return session
+    
+    @staticmethod
+    def unarchive_session(
+        db: Session,
+        session_id: int,
+        user_id: int
+    ) -> Optional[SessionModel]:
+        """
+        Unarchive a session.
+        
+        Args:
+            db: Database session
+            session_id: Session ID
+            user_id: User ID (for authorization check)
+        
+        Returns:
+            Unarchived session or None if not found
+        """
+        session = SessionRepository.get_by_id(db, session_id)
+        if not session:
+            return None
+        
+        # Check workspace ownership
+        workspace = WorkspaceRepository.get_by_id(db, session.workspace_id)
+        if not workspace or workspace.user_id != user_id:
+            raise ValueError("Session not found or access denied")
+        
+        # Check if workspace is archived
+        if workspace.status == WorkspaceStatus.ARCHIVE.value:
+            raise ValueError("Cannot unarchive session in archived workspace")
+        
+        # Update session status to ACTIVE
+        SessionRepository.update_status(
+            db=db,
+            session_id=session_id,
+            status=SessionStatus.ACTIVE.value
+        )
+        
+        # Commit transaction
+        db.commit()
+        db.refresh(session)
+        
+        logger.info("session_unarchived", session_id=session_id, workspace_id=session.workspace_id)
+        
+        return session
+    
+    @staticmethod
     def update_session_settings(
         db: Session,
         session_id: int,

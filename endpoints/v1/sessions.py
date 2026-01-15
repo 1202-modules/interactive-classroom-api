@@ -429,6 +429,128 @@ async def stop_session(
 
 
 @router.post(
+    "/sessions/{session_id}/archive",
+    response_model=SessionResponse,
+    summary="Archive session",
+    description="Archive a session (set status to archive).",
+    responses={
+        200: {"description": "Session archived successfully"},
+        401: {"description": "Not authenticated"},
+        404: {"description": "Session not found"}
+    }
+)
+async def archive_session(
+    session_id: int,
+    fields: Optional[str] = Query(None, description="Comma-separated list of fields to include (e.g., id,name,status)"),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Archive session."""
+    try:
+        session = SessionService.archive_session(
+            db=db,
+            session_id=session_id,
+            user_id=current_user["user_id"]
+        )
+        
+        if not session:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Session with id {session_id} not found"
+            )
+        
+        # Get merged settings for response
+        workspace = WorkspaceRepository.get_by_id(db, session.workspace_id)
+        merged_settings = SessionRepository.get_merged_settings(session, workspace.template_settings if workspace else None)
+        session_dict = SessionResponse.model_validate(session).model_dump()
+        session_dict['settings'] = merged_settings
+        session_response = SessionResponse(**session_dict)
+        
+        # Apply fields filter if specified
+        fields_set = parse_fields(fields)
+        if fields_set:
+            filtered_dict = filter_model_response(session_response, fields_set)
+            return filtered_dict
+        
+        return session_response
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("archive_session_error", session_id=session_id, error=str(e), exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error"
+        )
+
+
+@router.post(
+    "/sessions/{session_id}/unarchive",
+    response_model=SessionResponse,
+    summary="Unarchive session",
+    description="Unarchive a session (set status to active).",
+    responses={
+        200: {"description": "Session unarchived successfully"},
+        401: {"description": "Not authenticated"},
+        400: {"description": "Cannot unarchive session in archived workspace"},
+        404: {"description": "Session not found"}
+    }
+)
+async def unarchive_session(
+    session_id: int,
+    fields: Optional[str] = Query(None, description="Comma-separated list of fields to include (e.g., id,name,status)"),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Unarchive session."""
+    try:
+        session = SessionService.unarchive_session(
+            db=db,
+            session_id=session_id,
+            user_id=current_user["user_id"]
+        )
+        
+        if not session:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Session with id {session_id} not found"
+            )
+        
+        # Get merged settings for response
+        workspace = WorkspaceRepository.get_by_id(db, session.workspace_id)
+        merged_settings = SessionRepository.get_merged_settings(session, workspace.template_settings if workspace else None)
+        session_dict = SessionResponse.model_validate(session).model_dump()
+        session_dict['settings'] = merged_settings
+        session_response = SessionResponse(**session_dict)
+        
+        # Apply fields filter if specified
+        fields_set = parse_fields(fields)
+        if fields_set:
+            filtered_dict = filter_model_response(session_response, fields_set)
+            return filtered_dict
+        
+        return session_response
+    except ValueError as e:
+        status_code = status.HTTP_400_BAD_REQUEST if "archived workspace" in str(e).lower() else status.HTTP_404_NOT_FOUND
+        raise HTTPException(
+            status_code=status_code,
+            detail=str(e)
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("unarchive_session_error", session_id=session_id, error=str(e), exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error"
+        )
+
+
+@router.post(
     "/sessions/{session_id}/restore",
     response_model=SessionResponse,
     summary="Restore session from trash",
@@ -441,6 +563,7 @@ async def stop_session(
 )
 async def restore_session(
     session_id: int,
+    fields: Optional[str] = Query(None, description="Comma-separated list of fields to include (e.g., id,name,status)"),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -458,7 +581,20 @@ async def restore_session(
                 detail=f"Session with id {session_id} not found"
             )
         
-        return SessionResponse.model_validate(session)
+        # Get merged settings for response
+        workspace = WorkspaceRepository.get_by_id(db, session.workspace_id)
+        merged_settings = SessionRepository.get_merged_settings(session, workspace.template_settings if workspace else None)
+        session_dict = SessionResponse.model_validate(session).model_dump()
+        session_dict['settings'] = merged_settings
+        session_response = SessionResponse(**session_dict)
+        
+        # Apply fields filter if specified
+        fields_set = parse_fields(fields)
+        if fields_set:
+            filtered_dict = filter_model_response(session_response, fields_set)
+            return filtered_dict
+        
+        return session_response
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
