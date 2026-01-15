@@ -12,6 +12,7 @@ from endpoints.v1.schemas import (
     SessionCreateRequest, SessionUpdateRequest,
     MessageResponse
 )
+from utils.query_params import parse_fields, filter_model_response, filter_list_response
 import structlog
 
 logger = structlog.get_logger(__name__)
@@ -34,6 +35,7 @@ async def list_sessions(
     workspace_id: int,
     status: Optional[str] = Query(None, description="Filter by status (active, archive)"),
     include_deleted: bool = Query(False, description="Include deleted sessions"),
+    fields: Optional[str] = Query(None, description="Comma-separated list of fields to include (e.g., id,name,status)"),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -60,9 +62,22 @@ async def list_sessions(
             include_deleted=include_deleted
         )
         
+        # Get merged settings for each session
+        session_responses = []
+        for s in sessions:
+            merged_settings = SessionRepository.get_merged_settings(s, workspace.template_settings)
+            session_dict = SessionResponse.model_validate(s).model_dump()
+            session_dict['settings'] = merged_settings
+            session_responses.append(SessionResponse(**session_dict))
+        
+        # Apply fields filter if specified
+        fields_set = parse_fields(fields)
+        if fields_set:
+            session_responses = filter_list_response(session_responses, fields_set)
+        
         return SessionListResponse(
-            sessions=[SessionResponse.model_validate(s) for s in sessions],
-            total=len(sessions)
+            sessions=session_responses,
+            total=len(session_responses)
         )
     except HTTPException:
         raise
@@ -87,6 +102,7 @@ async def list_sessions(
 )
 async def get_session(
     session_id: int,
+    fields: Optional[str] = Query(None, description="Comma-separated list of fields to include (e.g., id,name,status)"),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -107,7 +123,11 @@ async def get_session(
                 detail="Session not found"
             )
         
-        return SessionResponse.model_validate(session)
+        # Get merged settings for response
+        merged_settings = SessionRepository.get_merged_settings(session, workspace.template_settings)
+        session_dict = SessionResponse.model_validate(session).model_dump()
+        session_dict['settings'] = merged_settings
+        return SessionResponse(**session_dict)
     except HTTPException:
         raise
     except Exception as e:
@@ -156,13 +176,18 @@ async def create_session(
             db=db,
             workspace_id=workspace_id,
             name=session_data.name,
-            description=session_data.description
+            description=session_data.description,
+            template_settings=workspace.template_settings
         )
         
         db.commit()
         db.refresh(session)
         
-        return SessionResponse.model_validate(session)
+        # Get merged settings for response
+        merged_settings = SessionRepository.get_merged_settings(session, workspace.template_settings)
+        session_dict = SessionResponse.model_validate(session).model_dump()
+        session_dict['settings'] = merged_settings
+        return SessionResponse(**session_dict)
     except HTTPException:
         raise
     except Exception as e:
@@ -207,6 +232,7 @@ async def update_session(
                 detail="Session not found"
             )
         
+        updated = False
         updated_session = SessionRepository.update(
             db=db,
             session_id=session_id,
@@ -215,12 +241,33 @@ async def update_session(
         )
         
         if updated_session:
+            updated = True
+        
+        # Handle settings update if provided
+        if session_data.settings is not None:
+            SessionService.update_session_settings(
+                db=db,
+                session_id=session_id,
+                user_id=current_user["user_id"],
+                new_settings=session_data.settings
+            )
+            updated = True
+        
+        if updated:
             db.commit()
-            db.refresh(updated_session)
-            return SessionResponse.model_validate(updated_session)
+            db.refresh(session)
+            workspace = WorkspaceRepository.get_by_id(db, session.workspace_id)
+            merged_settings = SessionRepository.get_merged_settings(session, workspace.template_settings if workspace else None)
+            session_dict = SessionResponse.model_validate(session).model_dump()
+            session_dict['settings'] = merged_settings
+            return SessionResponse(**session_dict)
         else:
             # No changes, return current session
-            return SessionResponse.model_validate(session)
+            workspace = WorkspaceRepository.get_by_id(db, session.workspace_id)
+            merged_settings = SessionRepository.get_merged_settings(session, workspace.template_settings if workspace else None)
+            session_dict = SessionResponse.model_validate(session).model_dump()
+            session_dict['settings'] = merged_settings
+            return SessionResponse(**session_dict)
     except HTTPException:
         raise
     except Exception as e:

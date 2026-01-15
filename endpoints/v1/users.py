@@ -1,10 +1,12 @@
 """User profile endpoints."""
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
+from typing import Optional
 from core.db import get_db
 from core.auth import get_current_user
 from services.user_service import UserService
 from endpoints.v1.schemas import UserResponse, UserUpdateRequest
+from utils.query_params import parse_fields, filter_model_response
 import structlog
 
 logger = structlog.get_logger(__name__)
@@ -24,6 +26,7 @@ router = APIRouter(tags=["Users"])
     }
 )
 async def get_current_user_profile(
+    fields: Optional[str] = Query(None, description="Comma-separated list of fields to include (e.g., id,email,first_name)"),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -35,7 +38,15 @@ async def get_current_user_profile(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User not found"
             )
-        return UserResponse.model_validate(user)
+        user_response = UserResponse.model_validate(user)
+        
+        # Apply fields filter if specified
+        fields_set = parse_fields(fields)
+        if fields_set:
+            filtered_dict = filter_model_response(user_response, fields_set)
+            return filtered_dict
+        
+        return user_response
     except HTTPException:
         raise
     except Exception as e:

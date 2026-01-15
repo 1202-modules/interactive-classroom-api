@@ -94,7 +94,7 @@ class WorkspaceResponse(BaseModel):
     name: str
     description: Optional[str] = None
     status: str
-    session_settings: Optional[Dict[str, Any]] = None
+    template_settings: Optional[Dict[str, Any]] = None
     created_at: datetime
     updated_at: datetime
 
@@ -112,14 +112,14 @@ class WorkspaceCreateRequest(BaseModel):
     """Schema for creating workspace."""
     name: str = Field(..., min_length=1, max_length=200, description="Workspace name")
     description: Optional[str] = Field(None, max_length=1000, description="Workspace description")
-    session_settings: Optional[Dict[str, Any]] = Field(None, description="Session settings (JSON)")
+    template_settings: Optional[Dict[str, Any]] = Field(None, description="Template settings for sessions (JSON)")
 
 
 class WorkspaceUpdateRequest(BaseModel):
     """Schema for updating workspace."""
     name: Optional[str] = Field(None, min_length=1, max_length=200, description="Workspace name")
     description: Optional[str] = Field(None, max_length=1000, description="Workspace description")
-    session_settings: Optional[Dict[str, Any]] = Field(None, description="Session settings (JSON)")
+    template_settings: Optional[Dict[str, Any]] = Field(None, description="Template settings for sessions (JSON)")
 
 
 # Session Schemas
@@ -132,7 +132,11 @@ class SessionResponse(BaseModel):
     stopped_participant_count: int
     start_datetime: Optional[datetime] = None
     end_datetime: Optional[datetime] = None
+    is_stopped: bool
     status: str
+    template_link_type: str
+    custom_settings: Optional[Dict[str, Any]] = None
+    settings: Optional[Dict[str, Any]] = None  # Computed merged settings
     created_at: datetime
     updated_at: datetime
 
@@ -156,6 +160,7 @@ class SessionUpdateRequest(BaseModel):
     """Schema for updating session."""
     name: Optional[str] = Field(None, min_length=1, max_length=200, description="Session name")
     description: Optional[str] = Field(None, max_length=1000, description="Session description")
+    settings: Optional[Dict[str, Any]] = Field(None, description="Session settings (JSON). Updates will create custom_settings if different from template.")
 
 
 # Common Schemas

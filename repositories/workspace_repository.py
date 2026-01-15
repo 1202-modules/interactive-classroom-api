@@ -47,7 +47,7 @@ class WorkspaceRepository:
         user_id: int,
         name: str,
         description: Optional[str] = None,
-        session_settings: Optional[dict] = None
+        template_settings: Optional[dict] = None
     ) -> Workspace:
         """Create a new workspace (without commit)."""
         workspace = Workspace(
@@ -55,7 +55,7 @@ class WorkspaceRepository:
             name=name,
             description=description,
             status=WorkspaceStatus.ACTIVE.value,
-            session_settings=session_settings
+            template_settings=template_settings
         )
         db.add(workspace)
         return workspace
@@ -66,7 +66,7 @@ class WorkspaceRepository:
         workspace_id: int,
         name: Optional[str] = None,
         description: Optional[str] = None,
-        session_settings: Optional[dict] = None
+        template_settings: Optional[dict] = None
     ) -> Optional[Workspace]:
         """Update an existing workspace (without commit)."""
         workspace = WorkspaceRepository.get_by_id(db, workspace_id)
@@ -80,8 +80,8 @@ class WorkspaceRepository:
         if description is not None and workspace.description != description:
             workspace.description = description
             updated = True
-        if session_settings is not None:
-            workspace.session_settings = session_settings
+        if template_settings is not None:
+            workspace.template_settings = template_settings
             updated = True
         
         return workspace if updated else None

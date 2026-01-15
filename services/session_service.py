@@ -58,8 +58,11 @@ class SessionService:
             clear_end_datetime=True
         )
         
-        # Clear stopped_participant_count
+        # Clear stopped_participant_count and set is_stopped = False
         SessionRepository.clear_session_run_data(db=db, session_id=session_id)
+        
+        # Ensure is_stopped is False
+        session.is_stopped = False
         
         # Commit transaction
         db.commit()
@@ -111,6 +114,9 @@ class SessionService:
             session_id=session_id,
             stopped_participant_count=participant_count
         )
+        
+        # Set is_stopped = True
+        session.is_stopped = True
         
         # Commit transaction
         db.commit()
@@ -197,4 +203,48 @@ class SessionService:
             )
         
         return deleted_session
+    
+    @staticmethod
+    def update_session_settings(
+        db: Session,
+        session_id: int,
+        user_id: int,
+        new_settings: dict
+    ) -> Optional[SessionModel]:
+        """
+        Update session settings and handle template linkage.
+        
+        Args:
+            db: Database session
+            session_id: Session ID
+            user_id: User ID (for authorization check)
+            new_settings: New settings to apply
+        
+        Returns:
+            Updated session or None if not found
+        """
+        session = SessionRepository.get_by_id(db, session_id)
+        if not session:
+            return None
+        
+        # Check workspace ownership
+        workspace = WorkspaceRepository.get_by_id(db, session.workspace_id)
+        if not workspace or workspace.user_id != user_id:
+            raise ValueError("Session not found or access denied")
+        
+        # Update settings with template linkage logic
+        SessionRepository.update_settings(
+            db=db,
+            session_id=session_id,
+            new_settings=new_settings,
+            template_settings=workspace.template_settings or {}
+        )
+        
+        # Commit transaction
+        db.commit()
+        db.refresh(session)
+        
+        logger.info("session_settings_updated", session_id=session_id, workspace_id=session.workspace_id)
+        
+        return session
 

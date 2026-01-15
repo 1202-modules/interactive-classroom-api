@@ -20,7 +20,7 @@ class WorkspaceService:
         user_id: int,
         name: str,
         description: Optional[str] = None,
-        session_settings: Optional[dict] = None
+        template_settings: Optional[dict] = None
     ) -> Workspace:
         """
         Create a new workspace.
@@ -30,7 +30,7 @@ class WorkspaceService:
             user_id: User ID
             name: Workspace name
             description: Workspace description (optional)
-            session_settings: Session settings (optional)
+            template_settings: Template settings for sessions (optional)
         
         Returns:
             Created workspace
@@ -40,7 +40,7 @@ class WorkspaceService:
             user_id=user_id,
             name=name,
             description=description,
-            session_settings=session_settings
+            template_settings=template_settings
         )
         
         # Commit transaction

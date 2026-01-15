@@ -1,8 +1,8 @@
 """Session repository."""
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session
-from models.session import Session as SessionModel, SessionStatus
+from models.session import Session as SessionModel, SessionStatus, TemplateLinkType
 
 
 class SessionRepository:
@@ -46,14 +46,18 @@ class SessionRepository:
         db: Session,
         workspace_id: int,
         name: str,
-        description: Optional[str] = None
+        description: Optional[str] = None,
+        template_settings: Optional[Dict[str, Any]] = None
     ) -> SessionModel:
         """Create a new session (without commit)."""
         session = SessionModel(
             workspace_id=workspace_id,
             name=name,
             description=description,
-            status=SessionStatus.ACTIVE.value
+            status=SessionStatus.ACTIVE.value,
+            template_link_type=TemplateLinkType.FULL.value,
+            custom_settings=None,
+            is_stopped=False
         )
         db.add(session)
         return session
@@ -130,7 +134,80 @@ class SessionRepository:
         
         session.end_datetime = None
         session.stopped_participant_count = 0
+        session.is_stopped = False
         return session
+    
+    @staticmethod
+    def update_settings(
+        db: Session,
+        session_id: int,
+        new_settings: Dict[str, Any],
+        template_settings: Dict[str, Any]
+    ) -> Optional[SessionModel]:
+        """
+        Update session settings and handle template linkage.
+        
+        Args:
+            db: Database session
+            session_id: Session ID
+            new_settings: New settings to apply
+            template_settings: Current template settings from workspace
+        
+        Returns:
+            Updated session or None if not found
+        """
+        session = SessionRepository.get_by_id(db, session_id)
+        if not session:
+            return None
+        
+        # Calculate differences between new_settings and template_settings
+        differences = {}
+        for key, value in new_settings.items():
+            if key not in template_settings or template_settings[key] != value:
+                differences[key] = value
+        
+        # Update template_link_type and custom_settings
+        if differences:
+            session.template_link_type = TemplateLinkType.PARTIAL.value
+            # Merge with existing custom_settings if any
+            if session.custom_settings:
+                session.custom_settings = {**session.custom_settings, **differences}
+            else:
+                session.custom_settings = differences
+        else:
+            # If no differences, reset to full template link
+            session.template_link_type = TemplateLinkType.FULL.value
+            session.custom_settings = None
+        
+        return session
+    
+    @staticmethod
+    def get_merged_settings(
+        session: SessionModel,
+        template_settings: Optional[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """
+        Get merged settings for a session (template + custom overrides).
+        
+        Args:
+            session: Session model instance
+            template_settings: Template settings from workspace
+        
+        Returns:
+            Merged settings dictionary
+        """
+        if not template_settings:
+            template_settings = {}
+        
+        if session.template_link_type == TemplateLinkType.FULL.value:
+            return template_settings.copy() if template_settings else {}
+        
+        # Partial: merge template with custom_settings
+        merged = template_settings.copy() if template_settings else {}
+        if session.custom_settings:
+            merged.update(session.custom_settings)
+        
+        return merged
     
     @staticmethod
     def soft_delete(db: Session, session_id: int) -> Optional[SessionModel]:

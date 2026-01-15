@@ -11,6 +11,7 @@ from endpoints.v1.schemas import (
     WorkspaceCreateRequest, WorkspaceUpdateRequest,
     MessageResponse
 )
+from utils.query_params import parse_fields, filter_model_response, filter_list_response
 import structlog
 
 logger = structlog.get_logger(__name__)
@@ -35,6 +36,7 @@ router = APIRouter(tags=["Workspaces"])
 async def list_workspaces(
     status: Optional[str] = Query(None, description="Filter by status (active, archive)"),
     include_deleted: bool = Query(False, description="Include deleted workspaces"),
+    fields: Optional[str] = Query(None, description="Comma-separated list of fields to include (e.g., id,name,status)"),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -46,9 +48,16 @@ async def list_workspaces(
             status=status,
             include_deleted=include_deleted
         )
+        workspace_responses = [WorkspaceResponse.model_validate(w) for w in workspaces]
+        
+        # Apply fields filter if specified
+        fields_set = parse_fields(fields)
+        if fields_set:
+            workspace_responses = filter_list_response(workspace_responses, fields_set)
+        
         return WorkspaceListResponse(
-            workspaces=[WorkspaceResponse.model_validate(w) for w in workspaces],
-            total=len(workspaces)
+            workspaces=workspace_responses,
+            total=len(workspace_responses)
         )
     except HTTPException:
         raise
@@ -73,6 +82,7 @@ async def list_workspaces(
 )
 async def get_workspace(
     workspace_id: int,
+    fields: Optional[str] = Query(None, description="Comma-separated list of fields to include (e.g., id,name,status)"),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -92,7 +102,15 @@ async def get_workspace(
                 detail="Workspace not found"
             )
         
-        return WorkspaceResponse.model_validate(workspace)
+        workspace_response = WorkspaceResponse.model_validate(workspace)
+        
+        # Apply fields filter if specified
+        fields_set = parse_fields(fields)
+        if fields_set:
+            filtered_dict = filter_model_response(workspace_response, fields_set)
+            return filtered_dict
+        
+        return workspace_response
     except HTTPException:
         raise
     except Exception as e:
@@ -126,7 +144,7 @@ async def create_workspace(
             user_id=current_user["user_id"],
             name=workspace_data.name,
             description=workspace_data.description,
-            session_settings=workspace_data.session_settings
+            template_settings=workspace_data.template_settings
         )
         return WorkspaceResponse.model_validate(workspace)
     except HTTPException:
@@ -177,7 +195,7 @@ async def update_workspace(
             workspace_id=workspace_id,
             name=workspace_data.name,
             description=workspace_data.description,
-            session_settings=workspace_data.session_settings
+            template_settings=workspace_data.template_settings
         )
         
         if updated_workspace:

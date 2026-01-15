@@ -39,7 +39,7 @@ class Workspace(Base):
     name = Column(String, nullable=False)
     description = Column(String, nullable=True)
     status = Column(String, nullable=False, default=WorkspaceStatus.ACTIVE.value)
-    session_settings = Column(JSON, nullable=True)
+    template_settings = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     is_deleted = Column(Boolean, default=False, nullable=False, index=True)
