@@ -134,9 +134,7 @@ class SessionResponse(BaseModel):
     end_datetime: Optional[datetime] = None
     is_stopped: bool
     status: str
-    template_link_type: str
-    custom_settings: Optional[Dict[str, Any]] = None
-    settings: Optional[Dict[str, Any]] = None  # Computed merged settings
+    settings: Optional[Dict[str, Any]] = None  # Computed merged settings (template + custom)
     created_at: datetime
     updated_at: datetime
 

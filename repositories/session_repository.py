@@ -2,7 +2,7 @@
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session
-from models.session import Session as SessionModel, SessionStatus, TemplateLinkType
+from models.session import Session as SessionModel, SessionStatus
 
 
 class SessionRepository:
@@ -55,7 +55,6 @@ class SessionRepository:
             name=name,
             description=description,
             status=SessionStatus.ACTIVE.value,
-            template_link_type=TemplateLinkType.FULL.value,
             custom_settings=None,
             is_stopped=False
         )
@@ -145,7 +144,7 @@ class SessionRepository:
         template_settings: Dict[str, Any]
     ) -> Optional[SessionModel]:
         """
-        Update session settings and handle template linkage.
+        Update session settings and calculate custom_settings differences.
         
         Args:
             db: Database session
@@ -156,27 +155,20 @@ class SessionRepository:
         Returns:
             Updated session or None if not found
         """
+        from utils.settings import calculate_settings_diff
+        
         session = SessionRepository.get_by_id(db, session_id)
         if not session:
             return None
         
-        # Calculate differences between new_settings and template_settings
-        differences = {}
-        for key, value in new_settings.items():
-            if key not in template_settings or template_settings[key] != value:
-                differences[key] = value
+        # Calculate differences recursively between new_settings and template_settings
+        differences = calculate_settings_diff(template_settings, new_settings)
         
-        # Update template_link_type and custom_settings
+        # Update custom_settings
         if differences:
-            session.template_link_type = TemplateLinkType.PARTIAL.value
-            # Merge with existing custom_settings if any
-            if session.custom_settings:
-                session.custom_settings = {**session.custom_settings, **differences}
-            else:
-                session.custom_settings = differences
+            session.custom_settings = differences
         else:
-            # If no differences, reset to full template link
-            session.template_link_type = TemplateLinkType.FULL.value
+            # If no differences, clear custom_settings
             session.custom_settings = None
         
         return session
@@ -196,18 +188,13 @@ class SessionRepository:
         Returns:
             Merged settings dictionary
         """
+        from utils.settings import merge_settings
+        
         if not template_settings:
             template_settings = {}
         
-        if session.template_link_type == TemplateLinkType.FULL.value:
-            return template_settings.copy() if template_settings else {}
-        
-        # Partial: merge template with custom_settings
-        merged = template_settings.copy() if template_settings else {}
-        if session.custom_settings:
-            merged.update(session.custom_settings)
-        
-        return merged
+        # Merge template with custom_settings recursively
+        return merge_settings(template_settings, session.custom_settings)
     
     @staticmethod
     def soft_delete(db: Session, session_id: int) -> Optional[SessionModel]:

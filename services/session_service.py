@@ -298,7 +298,7 @@ class SessionService:
         new_settings: dict
     ) -> Optional[SessionModel]:
         """
-        Update session settings and handle template linkage.
+        Update session settings and calculate custom_settings differences.
         
         Args:
             db: Database session
@@ -318,7 +318,7 @@ class SessionService:
         if not workspace or workspace.user_id != user_id:
             raise ValueError("Session not found or access denied")
         
-        # Update settings with template linkage logic
+        # Update settings with recursive comparison
         SessionRepository.update_settings(
             db=db,
             session_id=session_id,

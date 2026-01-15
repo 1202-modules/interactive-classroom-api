@@ -12,12 +12,6 @@ class SessionStatus(str, enum.Enum):
     ARCHIVE = "archive"
 
 
-class TemplateLinkType(str, enum.Enum):
-    """Template link type enum."""
-    FULL = "full"
-    PARTIAL = "partial"
-
-
 class Session(Base):
     """Session model."""
     __tablename__ = "sessions"
@@ -31,7 +25,6 @@ class Session(Base):
     end_datetime = Column(DateTime(timezone=True), nullable=True)
     is_stopped = Column(Boolean, default=False, nullable=False, index=True)
     status = Column(String, nullable=False, default=SessionStatus.ACTIVE.value)
-    template_link_type = Column(String, nullable=False, default=TemplateLinkType.FULL.value)
     custom_settings = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)

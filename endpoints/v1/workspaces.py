@@ -189,17 +189,22 @@ async def update_workspace(
                 detail="Workspace not found"
             )
         
-        updated_workspace = WorkspaceRepository.update(
+        updated_workspace = WorkspaceService.update_workspace(
             db=db,
             workspace_id=workspace_id,
+            user_id=current_user["user_id"],
             name=workspace_data.name,
             description=workspace_data.description,
             template_settings=workspace_data.template_settings
         )
         
-        if updated_workspace:
-            db.commit()
-            db.refresh(workspace)
+        if not updated_workspace:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Workspace with id {workspace_id} not found"
+            )
+        
+        workspace = updated_workspace
         
         # If fields not specified, return empty response
         fields_set = parse_fields(fields)
