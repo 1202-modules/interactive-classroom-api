@@ -193,14 +193,15 @@ class SessionRepository:
         """
         from utils.settings import merge_settings
         
+        # Ensure template_settings is a dict (not None)
         if template_settings is None:
-            # This could mean workspace is deleted or template_settings is explicitly None
-            # Return empty dict or raise error depending on business logic
-            # For now, return empty dict
             template_settings = {}
         
+        # Ensure custom_settings is handled correctly (can be None)
+        custom_settings = session.custom_settings if session.custom_settings is not None else {}
+        
         # Merge template with custom_settings recursively
-        return merge_settings(template_settings, session.custom_settings)
+        return merge_settings(template_settings, custom_settings)
     
     @staticmethod
     def soft_delete(db: Session, session_id: int) -> Optional[SessionModel]:

@@ -16,7 +16,6 @@ router = APIRouter(tags=["Users"])
 
 @router.get(
     "/me",
-    response_model=UserResponse,
     summary="Get current user profile",
     description="Get the profile of the currently authenticated user.",
     responses={

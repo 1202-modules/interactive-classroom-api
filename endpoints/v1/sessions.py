@@ -22,7 +22,6 @@ router = APIRouter(tags=["Sessions"])
 
 @router.get(
     "/workspaces/{workspace_id}/sessions",
-    response_model=SessionListResponse,
     summary="List sessions in workspace",
     description="Get list of sessions in a specific workspace.",
     responses={
@@ -65,7 +64,7 @@ async def list_sessions(
         # Get merged settings for each session
         session_responses = []
         for s in sessions:
-            merged_settings = SessionRepository.get_merged_settings(s, workspace.template_settings)
+            merged_settings = SessionRepository.get_merged_settings(s, workspace.template_settings or {})
             session_dict = SessionResponse.model_validate(s).model_dump()
             session_dict['settings'] = merged_settings
             session_responses.append(SessionResponse(**session_dict))
@@ -91,7 +90,6 @@ async def list_sessions(
 
 @router.get(
     "/sessions/{session_id}",
-    response_model=SessionResponse,
     summary="Get session details",
     description="Get detailed information about a specific session.",
     responses={
@@ -131,7 +129,7 @@ async def get_session(
             )
         
         # Get merged settings for response
-        merged_settings = SessionRepository.get_merged_settings(session, workspace.template_settings)
+        merged_settings = SessionRepository.get_merged_settings(session, workspace.template_settings or {})
         session_dict = SessionResponse.model_validate(session).model_dump()
         session_dict['settings'] = merged_settings
         session_response = SessionResponse(**session_dict)
@@ -234,6 +232,12 @@ async def create_session(
         return filtered_dict
     except HTTPException:
         raise
+    except ValueError as e:
+        logger.warning("create_session_validation_error", workspace_id=workspace_id, error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
     except Exception as e:
         logger.error("create_session_error", workspace_id=workspace_id, error=str(e), exc_info=True)
         raise HTTPException(
@@ -338,6 +342,12 @@ async def update_session(
         return filtered_dict
     except HTTPException:
         raise
+    except ValueError as e:
+        logger.warning("update_session_validation_error", session_id=session_id, error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
     except Exception as e:
         logger.error("update_session_error", session_id=session_id, error=str(e), exc_info=True)
         raise HTTPException(
@@ -379,8 +389,17 @@ async def delete_session(
         
         return None
     except ValueError as e:
+        # Check if it's a business logic validation error or access denied
+        error_msg = str(e).lower()
+        if any(keyword in error_msg for keyword in [
+            "cannot delete", "currently running", "that is currently running"
+        ]):
+            status_code = status.HTTP_400_BAD_REQUEST
+        else:
+            # Access denied or not found
+            status_code = status.HTTP_404_NOT_FOUND
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=status_code,
             detail=str(e)
         )
     except HTTPException:
@@ -440,8 +459,18 @@ async def start_session(
         filtered_dict = filter_model_response(session_response, fields_set)
         return filtered_dict
     except ValueError as e:
+        # Check if it's a business logic validation error or access denied
+        error_msg = str(e).lower()
+        if any(keyword in error_msg for keyword in [
+            "cannot start", "already running", "deleted workspace", "archived workspace",
+            "deleted session", "archived session", "that is already running"
+        ]):
+            status_code = status.HTTP_400_BAD_REQUEST
+        else:
+            # Access denied or not found
+            status_code = status.HTTP_404_NOT_FOUND
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status_code,
             detail=str(e)
         )
     except HTTPException:
@@ -502,8 +531,20 @@ async def stop_session(
         filtered_dict = filter_model_response(session_response, fields_set)
         return filtered_dict
     except ValueError as e:
+        # Check if it's a business logic validation error or access denied
+        error_msg = str(e).lower()
+        if any(keyword in error_msg for keyword in [
+            "cannot stop", "already stopped", "never started", 
+            "archived workspace", "deleted workspace", "archived session",
+            "deleted session", "that is already stopped", "that was never started",
+            "participant count", "cannot be negative", "negative"
+        ]):
+            status_code = status.HTTP_400_BAD_REQUEST
+        else:
+            # Access denied or not found
+            status_code = status.HTTP_404_NOT_FOUND
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=status_code,
             detail=str(e)
         )
     except HTTPException:
@@ -562,8 +603,17 @@ async def archive_session(
         filtered_dict = filter_model_response(session_response, fields_set)
         return filtered_dict
     except ValueError as e:
+        # Check if it's a business logic validation error or access denied
+        error_msg = str(e).lower()
+        if any(keyword in error_msg for keyword in [
+            "cannot archive", "deleted session", "deleted workspace", "archived workspace"
+        ]):
+            status_code = status.HTTP_400_BAD_REQUEST
+        else:
+            # Access denied or not found
+            status_code = status.HTTP_404_NOT_FOUND
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=status_code,
             detail=str(e)
         )
     except HTTPException:
@@ -623,7 +673,15 @@ async def unarchive_session(
         filtered_dict = filter_model_response(session_response, fields_set)
         return filtered_dict
     except ValueError as e:
-        status_code = status.HTTP_400_BAD_REQUEST if "archived workspace" in str(e).lower() else status.HTTP_404_NOT_FOUND
+        # Check if it's a business logic validation error or access denied
+        error_msg = str(e).lower()
+        if any(keyword in error_msg for keyword in [
+            "cannot unarchive", "deleted session", "archived workspace", "deleted workspace"
+        ]):
+            status_code = status.HTTP_400_BAD_REQUEST
+        else:
+            # Access denied or not found
+            status_code = status.HTTP_404_NOT_FOUND
         raise HTTPException(
             status_code=status_code,
             detail=str(e)
@@ -684,8 +742,17 @@ async def restore_session(
         filtered_dict = filter_model_response(session_response, fields_set)
         return filtered_dict
     except ValueError as e:
+        # Check if it's a business logic validation error or access denied
+        error_msg = str(e).lower()
+        if any(keyword in error_msg for keyword in [
+            "cannot restore", "not deleted", "that is not deleted"
+        ]):
+            status_code = status.HTTP_400_BAD_REQUEST
+        else:
+            # Access denied or not found
+            status_code = status.HTTP_404_NOT_FOUND
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=status_code,
             detail=str(e)
         )
     except HTTPException:
@@ -731,8 +798,17 @@ async def delete_session_permanent(
         
         return None
     except ValueError as e:
+        # Check if it's a business logic validation error or access denied
+        error_msg = str(e).lower()
+        if any(keyword in error_msg for keyword in [
+            "cannot delete", "currently running", "that is currently running"
+        ]):
+            status_code = status.HTTP_400_BAD_REQUEST
+        else:
+            # Access denied or not found
+            status_code = status.HTTP_404_NOT_FOUND
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=status_code,
             detail=str(e)
         )
     except HTTPException:

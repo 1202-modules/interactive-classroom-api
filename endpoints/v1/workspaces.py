@@ -5,6 +5,7 @@ from typing import Optional
 from core.db import get_db
 from core.auth import get_current_user
 from repositories.workspace_repository import WorkspaceRepository
+from repositories.session_repository import SessionRepository
 from services.workspace_service import WorkspaceService
 from endpoints.v1.schemas import (
     WorkspaceResponse, WorkspaceListResponse,
@@ -21,7 +22,6 @@ router = APIRouter(tags=["Workspaces"])
 
 @router.get(
     "",
-    response_model=WorkspaceListResponse,
     summary="List workspaces",
     description="""
     Get list of workspaces for the current user.
@@ -48,7 +48,35 @@ async def list_workspaces(
             status=status,
             include_deleted=include_deleted
         )
-        workspace_responses = [WorkspaceResponse.model_validate(w) for w in workspaces]
+        
+        # Calculate participant_count and has_live_session for each workspace
+        workspace_responses = []
+        for workspace in workspaces:
+            # Get all non-deleted sessions in workspace
+            sessions = SessionRepository.get_by_workspace_id(
+                db=db,
+                workspace_id=workspace.id,
+                include_deleted=False
+            )
+            
+            # Calculate participant_count (sum of stopped_participant_count from stopped sessions)
+            participant_count = sum(
+                session.stopped_participant_count 
+                for session in sessions 
+                if session.is_stopped
+            )
+            
+            # Check if there's at least one live (running) session
+            # Live session = is_stopped=False AND start_datetime is not NULL
+            has_live_session = any(
+                not session.is_stopped and session.start_datetime is not None
+                for session in sessions
+            )
+            
+            workspace_response = WorkspaceResponse.model_validate(workspace)
+            workspace_response.participant_count = participant_count
+            workspace_response.has_live_session = has_live_session
+            workspace_responses.append(workspace_response)
         
         # Apply fields filter if specified
         fields_set = parse_fields(fields)
@@ -71,7 +99,6 @@ async def list_workspaces(
 
 @router.get(
     "/{workspace_id}",
-    response_model=WorkspaceResponse,
     summary="Get workspace details",
     description="Get detailed information about a specific workspace.",
     responses={
@@ -102,7 +129,30 @@ async def get_workspace(
                 detail="Workspace not found"
             )
         
+        # Get all non-deleted sessions in workspace
+        sessions = SessionRepository.get_by_workspace_id(
+            db=db,
+            workspace_id=workspace_id,
+            include_deleted=False
+        )
+        
+        # Calculate participant_count (sum of stopped_participant_count from stopped sessions)
+        participant_count = sum(
+            session.stopped_participant_count 
+            for session in sessions 
+            if session.is_stopped
+        )
+        
+        # Check if there's at least one live (running) session
+        # Live session = is_stopped=False AND start_datetime is not NULL
+        has_live_session = any(
+            not session.is_stopped and session.start_datetime is not None
+            for session in sessions
+        )
+        
         workspace_response = WorkspaceResponse.model_validate(workspace)
+        workspace_response.participant_count = participant_count
+        workspace_response.has_live_session = has_live_session
         
         # Apply fields filter if specified
         fields_set = parse_fields(fields)
@@ -148,6 +198,12 @@ async def create_workspace(
         return WorkspaceResponse.model_validate(workspace)
     except HTTPException:
         raise
+    except ValueError as e:
+        logger.warning("create_workspace_validation_error", user_id=current_user["user_id"], error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
     except Exception as e:
         logger.error("create_workspace_error", user_id=current_user["user_id"], error=str(e), exc_info=True)
         raise HTTPException(
@@ -216,6 +272,12 @@ async def update_workspace(
         return filtered_dict
     except HTTPException:
         raise
+    except ValueError as e:
+        logger.warning("update_workspace_validation_error", workspace_id=workspace_id, error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
     except Exception as e:
         logger.error("update_workspace_error", workspace_id=workspace_id, error=str(e), exc_info=True)
         raise HTTPException(
@@ -257,9 +319,16 @@ async def delete_workspace(
         
         return None
     except ValueError as e:
+        # Check if it's a business logic validation error (active sessions) or access denied
+        error_msg = str(e)
+        if "Cannot delete workspace" in error_msg or "active running session" in error_msg:
+            status_code = status.HTTP_400_BAD_REQUEST
+        else:
+            # Access denied or not found
+            status_code = status.HTTP_404_NOT_FOUND
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e)
+            status_code=status_code,
+            detail=error_msg
         )
     except HTTPException:
         raise
@@ -310,8 +379,17 @@ async def archive_workspace(
         filtered_dict = filter_model_response(workspace_response, fields_set)
         return filtered_dict
     except ValueError as e:
+        # Check if it's a business logic validation error or access denied
+        error_msg = str(e).lower()
+        if any(keyword in error_msg for keyword in [
+            "cannot archive", "deleted workspace"
+        ]):
+            status_code = status.HTTP_400_BAD_REQUEST
+        else:
+            # Access denied or not found
+            status_code = status.HTTP_404_NOT_FOUND
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=status_code,
             detail=str(e)
         )
     except HTTPException:
@@ -363,8 +441,17 @@ async def unarchive_workspace(
         filtered_dict = filter_model_response(workspace_response, fields_set)
         return filtered_dict
     except ValueError as e:
+        # Check if it's a business logic validation error or access denied
+        error_msg = str(e).lower()
+        if any(keyword in error_msg for keyword in [
+            "cannot unarchive", "deleted workspace"
+        ]):
+            status_code = status.HTTP_400_BAD_REQUEST
+        else:
+            # Access denied or not found
+            status_code = status.HTTP_404_NOT_FOUND
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=status_code,
             detail=str(e)
         )
     except HTTPException:
@@ -416,8 +503,17 @@ async def restore_workspace(
         filtered_dict = filter_model_response(workspace_response, fields_set)
         return filtered_dict
     except ValueError as e:
+        # Check if it's a business logic validation error or access denied
+        error_msg = str(e).lower()
+        if any(keyword in error_msg for keyword in [
+            "cannot restore", "not deleted", "that is not deleted"
+        ]):
+            status_code = status.HTTP_400_BAD_REQUEST
+        else:
+            # Access denied or not found
+            status_code = status.HTTP_404_NOT_FOUND
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=status_code,
             detail=str(e)
         )
     except HTTPException:
@@ -463,9 +559,16 @@ async def delete_workspace_permanent(
         
         return None
     except ValueError as e:
+        # Check if it's a business logic validation error (active sessions) or access denied
+        error_msg = str(e)
+        if "Cannot delete workspace" in error_msg or "active running session" in error_msg:
+            status_code = status.HTTP_400_BAD_REQUEST
+        else:
+            # Access denied or not found
+            status_code = status.HTTP_404_NOT_FOUND
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e)
+            status_code=status_code,
+            detail=error_msg
         )
     except HTTPException:
         raise

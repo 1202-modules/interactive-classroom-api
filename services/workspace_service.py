@@ -301,17 +301,28 @@ class WorkspaceService:
         )
         
         for session in all_sessions:
-            # Get current merged settings (old template + custom_settings if exists)
+            # If session had no custom_settings, it was using old template as-is
+            # After template update, it should use new template as-is (no custom_settings needed)
+            if session.custom_settings is None:
+                # Session was using old template, now it will use new template
+                session.custom_settings = None
+                continue
+            
+            # Session had custom_settings, need to check which ones are still relevant
+            # Get current merged settings (old template + custom_settings)
             current_merged = merge_settings(old_template or {}, session.custom_settings or {})
             
-            # Calculate differences between merged and new template
+            # Calculate differences: values in current_merged that differ from new_template
+            # These are the values we need to preserve as custom_settings
+            # We compare current_merged (what session currently has) vs new_template (what it should have)
+            # The diff contains values from current_merged that are different from new_template
             new_diff = calculate_settings_diff(new_template or {}, current_merged)
             
             # Update custom_settings
             if new_diff:
                 session.custom_settings = new_diff
             else:
-                # All values now match new template
+                # All values now match new template, so no custom settings needed
                 session.custom_settings = None
         
         logger.info(
@@ -399,4 +410,75 @@ class WorkspaceService:
         logger.info("workspace_updated", workspace_id=workspace_id, user_id=user_id)
         
         return workspace
+    
+    @staticmethod
+    def validate_workspace_name(name: str) -> None:
+        """
+        Validate workspace name.
+        
+        Args:
+            name: Workspace name
+        
+        Raises:
+            ValueError: If name is invalid
+        """
+        if not name or not name.strip():
+            raise ValueError("Workspace name cannot be empty")
+        
+        if len(name.strip()) > 200:
+            raise ValueError("Workspace name cannot exceed 200 characters")
+    
+    @staticmethod
+    def check_workspace_name_duplicate(
+        db: Session,
+        user_id: int,
+        name: str,
+        exclude_workspace_id: Optional[int] = None
+    ) -> None:
+        """
+        Check if workspace name already exists for user.
+        
+        Args:
+            db: Database session
+            user_id: User ID
+            name: Workspace name
+            exclude_workspace_id: Workspace ID to exclude from check (for updates)
+        
+        Raises:
+            ValueError: If duplicate name found
+        """
+        workspaces = WorkspaceRepository.get_by_user_id(
+            db=db,
+            user_id=user_id,
+            include_deleted=False
+        )
+        
+        for workspace in workspaces:
+            if exclude_workspace_id and workspace.id == exclude_workspace_id:
+                continue
+            if workspace.name.strip().lower() == name.strip().lower():
+                raise ValueError(f"Workspace with name '{name}' already exists")
+    
+    @staticmethod
+    def validate_template_settings(template_settings: Optional[dict]) -> None:
+        """
+        Validate template_settings JSON structure.
+        
+        Args:
+            template_settings: Template settings dictionary
+        
+        Raises:
+            ValueError: If template_settings is invalid
+        """
+        if template_settings is None:
+            return
+        
+        if not isinstance(template_settings, dict):
+            raise ValueError("template_settings must be a dictionary")
+        
+        # Try to serialize to JSON to ensure it's valid
+        try:
+            json.dumps(template_settings)
+        except (TypeError, ValueError) as e:
+            raise ValueError(f"Invalid template_settings JSON: {str(e)}")
 

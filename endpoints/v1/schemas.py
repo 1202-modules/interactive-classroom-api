@@ -95,6 +95,8 @@ class WorkspaceResponse(BaseModel):
     description: Optional[str] = None
     status: str
     template_settings: Optional[Dict[str, Any]] = None
+    participant_count: int = Field(default=0, description="Total participant count from all stopped sessions")
+    has_live_session: bool = Field(default=False, description="Whether workspace has at least one live (running) session")
     created_at: datetime
     updated_at: datetime
 

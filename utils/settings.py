@@ -55,9 +55,14 @@ def merge_settings(template: Dict[str, Any], custom: Optional[Dict[str, Any]]) -
         Merged settings dictionary
     """
     if not custom:
+        # Return copy of template or empty dict
         return template.copy() if template else {}
     
-    merged = template.copy() if template else {}
+    # Ensure template is a dict
+    if not template:
+        template = {}
+    
+    merged = template.copy()
     
     for key, value in custom.items():
         if key in merged and isinstance(merged[key], dict) and isinstance(value, dict):

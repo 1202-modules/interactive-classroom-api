@@ -289,18 +289,19 @@ class SessionService:
         Returns:
             Archived session or None if not found
         """
-        session = SessionRepository.get_by_id(db, session_id)
+        # Get session including deleted ones to check deletion status
+        session = db.query(SessionModel).filter(SessionModel.id == session_id).first()
         if not session:
             return None
+        
+        # Check if session is deleted (must check before ownership check)
+        if session.is_deleted:
+            raise ValueError("Cannot archive deleted session")
         
         # Check workspace ownership
         workspace = WorkspaceRepository.get_by_id(db, session.workspace_id)
         if not workspace or workspace.user_id != user_id:
             raise ValueError("Session not found or access denied")
-        
-        # Check if session is deleted
-        if session.is_deleted:
-            raise ValueError("Cannot archive deleted session")
         
         # Update session status to ARCHIVE
         SessionRepository.update_status(
@@ -421,4 +422,52 @@ class SessionService:
         logger.info("session_settings_updated", session_id=session_id, workspace_id=session.workspace_id)
         
         return session
+    
+    @staticmethod
+    def validate_session_name(name: str) -> None:
+        """
+        Validate session name.
+        
+        Args:
+            name: Session name
+        
+        Raises:
+            ValueError: If name is invalid
+        """
+        if not name or not name.strip():
+            raise ValueError("Session name cannot be empty")
+        
+        if len(name.strip()) > 200:
+            raise ValueError("Session name cannot exceed 200 characters")
+    
+    @staticmethod
+    def check_session_name_duplicate(
+        db: Session,
+        workspace_id: int,
+        name: str,
+        exclude_session_id: Optional[int] = None
+    ) -> None:
+        """
+        Check if session name already exists in workspace.
+        
+        Args:
+            db: Database session
+            workspace_id: Workspace ID
+            name: Session name
+            exclude_session_id: Session ID to exclude from check (for updates)
+        
+        Raises:
+            ValueError: If duplicate name found
+        """
+        sessions = SessionRepository.get_by_workspace_id(
+            db=db,
+            workspace_id=workspace_id,
+            include_deleted=False
+        )
+        
+        for session in sessions:
+            if exclude_session_id and session.id == exclude_session_id:
+                continue
+            if session.name.strip().lower() == name.strip().lower():
+                raise ValueError(f"Session with name '{name}' already exists in this workspace")
 
