@@ -66,7 +66,7 @@ router = APIRouter(tags=["Sessions"])
 )
 async def list_sessions(
     workspace_id: int,
-    status: Optional[str] = Query(None, description="Filter by status (active, archive)"),
+    status_filter: Optional[str] = Query(None, description="Filter by status (active, archive)", alias="status"),
     include_deleted: bool = Query(False, description="Include deleted sessions"),
     fields: Optional[str] = Query(None, description="Comma-separated list of fields to include (e.g., id,name,status)"),
     db: Session = Depends(get_db),
@@ -91,7 +91,7 @@ async def list_sessions(
         sessions = SessionRepository.get_by_workspace_id(
             db=db,
             workspace_id=workspace_id,
-            status=status,
+            status=status_filter,
             include_deleted=include_deleted
         )
         
