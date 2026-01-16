@@ -19,9 +19,34 @@ router = APIRouter(tags=["Users"])
     summary="Get current user profile",
     description="Get the profile of the currently authenticated user.",
     responses={
-        200: {"description": "User profile retrieved successfully"},
+        200: {
+            "description": "User profile retrieved successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "id": 1,
+                        "email": "user@example.com",
+                        "email_verified": True,
+                        "first_name": "John",
+                        "last_name": "Doe",
+                        "avatar_url": "https://example.com/avatar.jpg",
+                        "created_at": "2024-01-15T10:30:00Z",
+                        "updated_at": "2024-01-15T10:30:00Z"
+                    }
+                }
+            }
+        },
         401: {"description": "Not authenticated"},
-        404: {"description": "User not found"}
+        404: {
+            "description": "User not found",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "User not found"
+                    }
+                }
+            }
+        }
     }
 )
 async def get_current_user_profile(
@@ -65,9 +90,30 @@ async def get_current_user_profile(
     All fields are optional - only provided fields will be updated.
     """,
     responses={
-        200: {"description": "Profile updated successfully"},
+        200: {
+            "description": "Profile updated successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "id": 1,
+                        "first_name": "John",
+                        "last_name": "Doe",
+                        "avatar_url": "https://example.com/avatar.jpg"
+                    }
+                }
+            }
+        },
         401: {"description": "Not authenticated"},
-        404: {"description": "User not found"}
+        404: {
+            "description": "User not found",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "User not found"
+                    }
+                }
+            }
+        }
     }
 )
 async def update_current_user_profile(

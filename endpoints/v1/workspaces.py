@@ -29,7 +29,30 @@ router = APIRouter(tags=["Workspaces"])
     Can be filtered by status (active, archive) and includes deleted workspaces if requested.
     """,
     responses={
-        200: {"description": "Workspaces retrieved successfully"},
+        200: {
+            "description": "Workspaces retrieved successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "workspaces": [
+                            {
+                                "id": 1,
+                                "user_id": 1,
+                                "name": "My Workspace",
+                                "description": "A workspace for my classes",
+                                "status": "active",
+                                "template_settings": {"poll_duration": 30},
+                                "participant_count": 25,
+                                "has_live_session": True,
+                                "created_at": "2024-01-15T10:30:00Z",
+                                "updated_at": "2024-01-15T10:30:00Z"
+                            }
+                        ],
+                        "total": 1
+                    }
+                }
+            }
+        },
         401: {"description": "Not authenticated"}
     }
 )
@@ -102,14 +125,41 @@ async def list_workspaces(
     summary="Get workspace details",
     description="Get detailed information about a specific workspace.",
     responses={
-        200: {"description": "Workspace retrieved successfully"},
+        200: {
+            "description": "Workspace retrieved successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "id": 1,
+                        "user_id": 1,
+                        "name": "My Workspace",
+                        "description": "A workspace for my classes",
+                        "status": "active",
+                        "template_settings": {"poll_duration": 30},
+                        "participant_count": 25,
+                        "has_live_session": True,
+                        "created_at": "2024-01-15T10:30:00Z",
+                        "updated_at": "2024-01-15T10:30:00Z"
+                    }
+                }
+            }
+        },
         401: {"description": "Not authenticated"},
-        404: {"description": "Workspace not found"}
+        404: {
+            "description": "Workspace not found",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Workspace with id 1 not found"
+                    }
+                }
+            }
+        }
     }
 )
 async def get_workspace(
     workspace_id: int,
-    fields: Optional[str] = Query(None, description="Comma-separated list of fields to include (e.g., id,name,status)"),
+    fields: Optional[str] = Query(None, description="Comma-separated list of fields to include (e.g., id,name,status)", example="id,name,status"),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -177,7 +227,35 @@ async def get_workspace(
     summary="Create workspace",
     description="Create a new workspace for the current user.",
     responses={
-        201: {"description": "Workspace created successfully"},
+        201: {
+            "description": "Workspace created successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "id": 1,
+                        "user_id": 1,
+                        "name": "My Workspace",
+                        "description": "A workspace for my classes",
+                        "status": "active",
+                        "template_settings": {"poll_duration": 30},
+                        "participant_count": 0,
+                        "has_live_session": False,
+                        "created_at": "2024-01-15T10:30:00Z",
+                        "updated_at": "2024-01-15T10:30:00Z"
+                    }
+                }
+            }
+        },
+        400: {
+            "description": "Validation error",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Workspace name already exists"
+                    }
+                }
+            }
+        },
         401: {"description": "Not authenticated"}
     }
 )
@@ -217,15 +295,45 @@ async def create_workspace(
     summary="Update workspace",
     description="Update an existing workspace.",
     responses={
-        200: {"description": "Workspace updated successfully"},
+        200: {
+            "description": "Workspace updated successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "id": 1,
+                        "name": "Updated Workspace",
+                        "status": "active"
+                    }
+                }
+            }
+        },
+        400: {
+            "description": "Validation error",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Workspace name already exists"
+                    }
+                }
+            }
+        },
         401: {"description": "Not authenticated"},
-        404: {"description": "Workspace not found"}
+        404: {
+            "description": "Workspace not found",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Workspace with id 1 not found"
+                    }
+                }
+            }
+        }
     }
 )
 async def update_workspace(
     workspace_id: int,
     workspace_data: WorkspaceUpdateRequest,
-    fields: Optional[str] = Query(None, description="Comma-separated list of fields to include. If not specified, returns empty response."),
+    fields: Optional[str] = Query(None, description="Comma-separated list of fields to include. If not specified, returns empty response.", example="id,name,status"),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -293,8 +401,27 @@ async def update_workspace(
     description="Soft delete a workspace (moves to trash).",
     responses={
         204: {"description": "Workspace deleted successfully"},
+        400: {
+            "description": "Validation error",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Cannot delete workspace with active running session"
+                    }
+                }
+            }
+        },
         401: {"description": "Not authenticated"},
-        404: {"description": "Workspace not found"}
+        404: {
+            "description": "Workspace not found",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Workspace with id 1 not found"
+                    }
+                }
+            }
+        }
     }
 )
 async def delete_workspace(
@@ -345,9 +472,39 @@ async def delete_workspace(
     summary="Archive workspace",
     description="Archive a workspace and end all active sessions.",
     responses={
-        200: {"description": "Workspace archived successfully"},
+        200: {
+            "description": "Workspace archived successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "id": 1,
+                        "name": "My Workspace",
+                        "status": "archive"
+                    }
+                }
+            }
+        },
+        400: {
+            "description": "Validation error",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Cannot archive deleted workspace"
+                    }
+                }
+            }
+        },
         401: {"description": "Not authenticated"},
-        404: {"description": "Workspace not found"}
+        404: {
+            "description": "Workspace not found",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Workspace with id 1 not found"
+                    }
+                }
+            }
+        }
     }
 )
 async def archive_workspace(
@@ -407,9 +564,39 @@ async def archive_workspace(
     summary="Unarchive workspace",
     description="Unarchive a workspace (restore from archive).",
     responses={
-        200: {"description": "Workspace unarchived successfully"},
+        200: {
+            "description": "Workspace unarchived successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "id": 1,
+                        "name": "My Workspace",
+                        "status": "active"
+                    }
+                }
+            }
+        },
+        400: {
+            "description": "Validation error",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Cannot unarchive deleted workspace"
+                    }
+                }
+            }
+        },
         401: {"description": "Not authenticated"},
-        404: {"description": "Workspace not found"}
+        404: {
+            "description": "Workspace not found",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Workspace with id 1 not found"
+                    }
+                }
+            }
+        }
     }
 )
 async def unarchive_workspace(
@@ -469,9 +656,39 @@ async def unarchive_workspace(
     summary="Restore workspace from trash",
     description="Restore a workspace from trash (undo soft delete).",
     responses={
-        200: {"description": "Workspace restored successfully"},
+        200: {
+            "description": "Workspace restored successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "id": 1,
+                        "name": "My Workspace",
+                        "status": "active"
+                    }
+                }
+            }
+        },
+        400: {
+            "description": "Validation error",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Cannot restore workspace that is not deleted"
+                    }
+                }
+            }
+        },
         401: {"description": "Not authenticated"},
-        404: {"description": "Workspace not found"}
+        404: {
+            "description": "Workspace not found",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Workspace with id 1 not found"
+                    }
+                }
+            }
+        }
     }
 )
 async def restore_workspace(
@@ -533,8 +750,27 @@ async def restore_workspace(
     description="Permanently delete a workspace (hard delete). This action cannot be undone.",
     responses={
         204: {"description": "Workspace permanently deleted"},
+        400: {
+            "description": "Validation error",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Cannot delete workspace with active running session"
+                    }
+                }
+            }
+        },
         401: {"description": "Not authenticated"},
-        404: {"description": "Workspace not found"}
+        404: {
+            "description": "Workspace not found",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Workspace with id 1 not found"
+                    }
+                }
+            }
+        }
     }
 )
 async def delete_workspace_permanent(

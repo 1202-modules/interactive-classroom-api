@@ -36,9 +36,43 @@ router = APIRouter(tags=["Authentication"])
     - Verification code expires in 15 minutes
     """,
     responses={
-        201: {"description": "User registered successfully"},
-        400: {"description": "Email already exists or validation error"},
-        422: {"description": "Validation error"}
+        201: {
+            "description": "User registered successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "email": "user@example.com",
+                        "verification_code_sent": True
+                    }
+                }
+            }
+        },
+        400: {
+            "description": "Email already exists or validation error",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Email already exists"
+                    }
+                }
+            }
+        },
+        422: {
+            "description": "Validation error",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": [
+                            {
+                                "loc": ["body", "email"],
+                                "msg": "field required",
+                                "type": "value_error.missing"
+                            }
+                        ]
+                    }
+                }
+            }
+        }
     }
 )
 async def register(
@@ -85,9 +119,39 @@ async def register(
     - Email can only be verified once
     """,
     responses={
-        200: {"description": "Email verified successfully"},
-        400: {"description": "Invalid code, expired code, or email already verified"},
-        404: {"description": "User not found"}
+        200: {
+            "description": "Email verified successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+                        "token_type": "bearer",
+                        "user_id": 1,
+                        "email": "user@example.com"
+                    }
+                }
+            }
+        },
+        400: {
+            "description": "Invalid code, expired code, or email already verified",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Invalid verification code"
+                    }
+                }
+            }
+        },
+        404: {
+            "description": "User not found",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "User not found"
+                    }
+                }
+            }
+        }
     }
 )
 async def verify_email(
@@ -133,9 +197,39 @@ async def verify_email(
     - Refresh token is stored in HTTP-only cookie (not accessible via JavaScript)
     """,
     responses={
-        200: {"description": "Login successful"},
-        400: {"description": "Invalid credentials or email not verified"},
-        401: {"description": "Invalid credentials"}
+        200: {
+            "description": "Login successful",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+                        "token_type": "bearer",
+                        "user_id": 1,
+                        "email": "user@example.com"
+                    }
+                }
+            }
+        },
+        400: {
+            "description": "Invalid credentials or email not verified",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Email not verified"
+                    }
+                }
+            }
+        },
+        401: {
+            "description": "Invalid credentials",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Invalid email or password"
+                    }
+                }
+            }
+        }
     }
 )
 async def login(
@@ -190,8 +284,26 @@ async def login(
     - New code expires in 15 minutes
     """,
     responses={
-        200: {"description": "Verification code resent"},
-        400: {"description": "User not found or email already verified"}
+        200: {
+            "description": "Verification code resent",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "verification_code_sent": True
+                    }
+                }
+            }
+        },
+        400: {
+            "description": "User not found or email already verified",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Email already verified"
+                    }
+                }
+            }
+        }
     }
 )
 async def resend_code(
@@ -235,9 +347,39 @@ async def resend_code(
     - Invalid/expired refresh token returns 401
     """,
     responses={
-        200: {"description": "Token refreshed successfully"},
-        401: {"description": "Invalid or expired refresh token"},
-        403: {"description": "Refresh token revoked"}
+        200: {
+            "description": "Token refreshed successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+                        "token_type": "bearer",
+                        "user_id": 1,
+                        "email": "user@example.com"
+                    }
+                }
+            }
+        },
+        401: {
+            "description": "Invalid or expired refresh token",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Refresh token not found"
+                    }
+                }
+            }
+        },
+        403: {
+            "description": "Refresh token revoked",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Refresh token revoked"
+                    }
+                }
+            }
+        }
     }
 )
 async def refresh(
@@ -315,8 +457,26 @@ async def refresh(
     - Access token remains valid until expiration (stateless)
     """,
     responses={
-        200: {"description": "Logout successful"},
-        401: {"description": "Refresh token not found"}
+        200: {
+            "description": "Logout successful",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "message": "Logged out successfully"
+                    }
+                }
+            }
+        },
+        401: {
+            "description": "Refresh token not found",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Refresh token not found"
+                    }
+                }
+            }
+        }
     }
 )
 async def logout(

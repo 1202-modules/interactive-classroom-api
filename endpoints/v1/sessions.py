@@ -25,9 +25,43 @@ router = APIRouter(tags=["Sessions"])
     summary="List sessions in workspace",
     description="Get list of sessions in a specific workspace.",
     responses={
-        200: {"description": "Sessions retrieved successfully"},
+        200: {
+            "description": "Sessions retrieved successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "sessions": [
+                            {
+                                "id": 1,
+                                "workspace_id": 1,
+                                "name": "Lecture 1",
+                                "description": "Introduction to the course",
+                                "stopped_participant_count": 25,
+                                "start_datetime": "2024-01-15T10:30:00Z",
+                                "end_datetime": "2024-01-15T12:00:00Z",
+                                "is_stopped": True,
+                                "status": "active",
+                                "settings": {"poll_duration": 30},
+                                "created_at": "2024-01-15T09:00:00Z",
+                                "updated_at": "2024-01-15T12:00:00Z"
+                            }
+                        ],
+                        "total": 1
+                    }
+                }
+            }
+        },
         401: {"description": "Not authenticated"},
-        404: {"description": "Workspace not found"}
+        404: {
+            "description": "Workspace not found",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Workspace with id 1 not found"
+                    }
+                }
+            }
+        }
     }
 )
 async def list_sessions(
@@ -93,9 +127,48 @@ async def list_sessions(
     summary="Get session details",
     description="Get detailed information about a specific session.",
     responses={
-        200: {"description": "Session retrieved successfully"},
+        200: {
+            "description": "Session retrieved successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "id": 1,
+                        "workspace_id": 1,
+                        "name": "Lecture 1",
+                        "description": "Introduction to the course",
+                        "stopped_participant_count": 25,
+                        "start_datetime": "2024-01-15T10:30:00Z",
+                        "end_datetime": "2024-01-15T12:00:00Z",
+                        "is_stopped": True,
+                        "status": "active",
+                        "settings": {"poll_duration": 30},
+                        "created_at": "2024-01-15T09:00:00Z",
+                        "updated_at": "2024-01-15T12:00:00Z"
+                    }
+                }
+            }
+        },
+        400: {
+            "description": "Validation error",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Cannot access session in deleted workspace"
+                    }
+                }
+            }
+        },
         401: {"description": "Not authenticated"},
-        404: {"description": "Session not found"}
+        404: {
+            "description": "Session not found",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Session with id 1 not found"
+                    }
+                }
+            }
+        }
     }
 )
 async def get_session(
@@ -157,9 +230,48 @@ async def get_session(
     summary="Create session",
     description="Create a new session in a workspace.",
     responses={
-        201: {"description": "Session created successfully"},
+        201: {
+            "description": "Session created successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "id": 1,
+                        "workspace_id": 1,
+                        "name": "Lecture 1",
+                        "description": "Introduction to the course",
+                        "stopped_participant_count": 0,
+                        "start_datetime": None,
+                        "end_datetime": None,
+                        "is_stopped": True,
+                        "status": "active",
+                        "settings": {"poll_duration": 30},
+                        "created_at": "2024-01-15T09:00:00Z",
+                        "updated_at": "2024-01-15T09:00:00Z"
+                    }
+                }
+            }
+        },
+        400: {
+            "description": "Validation error",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Session name already exists"
+                    }
+                }
+            }
+        },
         401: {"description": "Not authenticated"},
-        404: {"description": "Workspace not found"}
+        404: {
+            "description": "Workspace not found",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Workspace with id 1 not found"
+                    }
+                }
+            }
+        }
     }
 )
 async def create_session(
@@ -363,8 +475,27 @@ async def update_session(
     description="Soft delete a session (moves to trash).",
     responses={
         204: {"description": "Session deleted successfully"},
+        400: {
+            "description": "Validation error",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Cannot delete session that is currently running"
+                    }
+                }
+            }
+        },
         401: {"description": "Not authenticated"},
-        404: {"description": "Session not found"}
+        404: {
+            "description": "Session not found",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Session with id 1 not found"
+                    }
+                }
+            }
+        }
     }
 )
 async def delete_session(
@@ -417,10 +548,40 @@ async def delete_session(
     summary="Start session",
     description="Start a session (set status to active and record start time).",
     responses={
-        200: {"description": "Session started successfully"},
+        200: {
+            "description": "Session started successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "id": 1,
+                        "name": "Lecture 1",
+                        "is_stopped": False,
+                        "start_datetime": "2024-01-15T10:30:00Z"
+                    }
+                }
+            }
+        },
+        400: {
+            "description": "Validation error",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Cannot start session in archived workspace"
+                    }
+                }
+            }
+        },
         401: {"description": "Not authenticated"},
-        400: {"description": "Cannot start session in archived workspace"},
-        404: {"description": "Session not found"}
+        404: {
+            "description": "Session not found",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Session with id 1 not found"
+                    }
+                }
+            }
+        }
     }
 )
 async def start_session(
@@ -488,15 +649,47 @@ async def start_session(
     summary="Stop session",
     description="Stop a session (set end_datetime and stopped_participant_count).",
     responses={
-        200: {"description": "Session stopped successfully"},
+        200: {
+            "description": "Session stopped successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "id": 1,
+                        "name": "Lecture 1",
+                        "is_stopped": True,
+                        "stopped_participant_count": 25,
+                        "end_datetime": "2024-01-15T12:00:00Z"
+                    }
+                }
+            }
+        },
+        400: {
+            "description": "Validation error",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Cannot stop session that is already stopped"
+                    }
+                }
+            }
+        },
         401: {"description": "Not authenticated"},
-        404: {"description": "Session not found"}
+        404: {
+            "description": "Session not found",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Session with id 1 not found"
+                    }
+                }
+            }
+        }
     }
 )
 async def stop_session(
     session_id: int,
-    participant_count: int = Query(0, description="Number of participants at stop time (default 0)"),
-    fields: Optional[str] = Query(None, description="Comma-separated list of fields to include. If not specified, returns empty response."),
+    participant_count: int = Query(0, description="Number of participants at stop time (default 0)", example=25),
+    fields: Optional[str] = Query(None, description="Comma-separated list of fields to include. If not specified, returns empty response.", example="id,name,is_stopped"),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -562,9 +755,39 @@ async def stop_session(
     summary="Archive session",
     description="Archive a session (set status to archive).",
     responses={
-        200: {"description": "Session archived successfully"},
+        200: {
+            "description": "Session archived successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "id": 1,
+                        "name": "Lecture 1",
+                        "status": "archive"
+                    }
+                }
+            }
+        },
+        400: {
+            "description": "Validation error",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Cannot archive deleted session"
+                    }
+                }
+            }
+        },
         401: {"description": "Not authenticated"},
-        404: {"description": "Session not found"}
+        404: {
+            "description": "Session not found",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Session with id 1 not found"
+                    }
+                }
+            }
+        }
     }
 )
 async def archive_session(
@@ -631,10 +854,39 @@ async def archive_session(
     summary="Unarchive session",
     description="Unarchive a session (set status to active).",
     responses={
-        200: {"description": "Session unarchived successfully"},
+        200: {
+            "description": "Session unarchived successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "id": 1,
+                        "name": "Lecture 1",
+                        "status": "active"
+                    }
+                }
+            }
+        },
+        400: {
+            "description": "Validation error",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Cannot unarchive session in archived workspace"
+                    }
+                }
+            }
+        },
         401: {"description": "Not authenticated"},
-        400: {"description": "Cannot unarchive session in archived workspace"},
-        404: {"description": "Session not found"}
+        404: {
+            "description": "Session not found",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Session with id 1 not found"
+                    }
+                }
+            }
+        }
     }
 )
 async def unarchive_session(
@@ -772,8 +1024,27 @@ async def restore_session(
     description="Permanently delete a session (hard delete). This action cannot be undone.",
     responses={
         204: {"description": "Session permanently deleted"},
+        400: {
+            "description": "Validation error",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Cannot delete session that is currently running"
+                    }
+                }
+            }
+        },
         401: {"description": "Not authenticated"},
-        404: {"description": "Session not found"}
+        404: {
+            "description": "Session not found",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Session with id 1 not found"
+                    }
+                }
+            }
+        }
     }
 )
 async def delete_session_permanent(
