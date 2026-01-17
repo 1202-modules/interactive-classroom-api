@@ -10,7 +10,7 @@ from services.session_service import SessionService
 from endpoints.v1.schemas import (
     SessionResponse, SessionListResponse,
     SessionCreateRequest, SessionUpdateRequest,
-    MessageResponse
+    MessageResponse, PasscodeResponse
 )
 from utils.query_params import parse_fields, filter_model_response, filter_list_response
 import structlog
@@ -1086,6 +1086,119 @@ async def delete_session_permanent(
         raise
     except Exception as e:
         logger.error("delete_session_permanent_error", session_id=session_id, error=str(e), exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error"
+        )
+
+
+@router.get(
+    "/sessions/{session_id}/passcode",
+    response_model=PasscodeResponse,
+    summary="Get session passcode",
+    description="Get the passcode for a session.",
+    responses={
+        200: {
+            "description": "Passcode retrieved successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "passcode": "ABC123"
+                    }
+                }
+            }
+        },
+        401: {"description": "Not authenticated"},
+        404: {"description": "Session not found"}
+    }
+)
+async def get_session_passcode(
+    session_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Get session passcode."""
+    try:
+        session = SessionRepository.get_by_id(db, session_id)
+        if not session:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Session with id {session_id} not found"
+            )
+        
+        workspace = WorkspaceRepository.get_by_id(db, session.workspace_id)
+        if not workspace or workspace.user_id != current_user["user_id"]:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Session not found"
+            )
+        
+        if not session.passcode:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Session passcode not found"
+            )
+        
+        return PasscodeResponse(passcode=session.passcode)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("get_session_passcode_error", session_id=session_id, error=str(e), exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error"
+        )
+
+
+@router.post(
+    "/sessions/{session_id}/passcode/regenerate",
+    response_model=PasscodeResponse,
+    summary="Regenerate session passcode",
+    description="Regenerate the passcode for a session. The old passcode becomes invalid.",
+    responses={
+        200: {
+            "description": "Passcode regenerated successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "passcode": "XYZ789"
+                    }
+                }
+            }
+        },
+        401: {"description": "Not authenticated"},
+        404: {"description": "Session not found"}
+    }
+)
+async def regenerate_session_passcode(
+    session_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Regenerate session passcode."""
+    try:
+        session = SessionService.regenerate_passcode(
+            db=db,
+            session_id=session_id,
+            user_id=current_user["user_id"]
+        )
+        
+        if not session:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Session with id {session_id} not found"
+            )
+        
+        return PasscodeResponse(passcode=session.passcode)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("regenerate_session_passcode_error", session_id=session_id, error=str(e), exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error"

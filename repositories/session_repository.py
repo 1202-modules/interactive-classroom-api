@@ -47,16 +47,24 @@ class SessionRepository:
         workspace_id: int,
         name: str,
         description: Optional[str] = None,
-        template_settings: Optional[Dict[str, Any]] = None
+        template_settings: Optional[Dict[str, Any]] = None,
+        passcode: Optional[str] = None
     ) -> SessionModel:
         """Create a new session (without commit)."""
+        from utils.passcode import generate_unique_passcode
+        
+        # Generate passcode if not provided
+        if passcode is None:
+            passcode = generate_unique_passcode(db)
+        
         session = SessionModel(
             workspace_id=workspace_id,
             name=name,
             description=description,
             status=SessionStatus.ACTIVE.value,
             custom_settings=None,
-            is_stopped=False
+            is_stopped=False,
+            passcode=passcode
         )
         db.add(session)
         return session

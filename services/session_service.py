@@ -470,4 +470,63 @@ class SessionService:
                 continue
             if session.name.strip().lower() == name.strip().lower():
                 raise ValueError(f"Session with name '{name}' already exists in this workspace")
+    
+    @staticmethod
+    def regenerate_passcode(
+        db: Session,
+        session_id: int,
+        user_id: int
+    ) -> Optional[SessionModel]:
+        """
+        Regenerate passcode for a session.
+        
+        Args:
+            db: Database session
+            session_id: Session ID
+            user_id: User ID (for authorization check)
+        
+        Returns:
+            Updated session or None if not found
+        
+        Raises:
+            ValueError: If session not found or access denied
+        """
+        from utils.passcode import generate_unique_passcode
+        
+        session = SessionRepository.get_by_id(db, session_id)
+        if not session:
+            return None
+        
+        # Check workspace ownership
+        workspace = WorkspaceRepository.get_by_id(db, session.workspace_id)
+        if not workspace or workspace.user_id != user_id:
+            raise ValueError("Session not found or access denied")
+        
+        # Generate new unique passcode
+        new_passcode = generate_unique_passcode(db)
+        
+        # Update session passcode
+        session.passcode = new_passcode
+        
+        # Commit transaction
+        db.commit()
+        db.refresh(session)
+        
+        logger.info("session_passcode_regenerated", session_id=session_id, workspace_id=session.workspace_id)
+        
+        return session
+    
+    @staticmethod
+    def validate_passcode(passcode: str) -> bool:
+        """
+        Validate passcode format.
+        
+        Args:
+            passcode: Passcode to validate
+        
+        Returns:
+            True if valid, False otherwise
+        """
+        from utils.passcode import validate_passcode_format
+        return validate_passcode_format(passcode)
 

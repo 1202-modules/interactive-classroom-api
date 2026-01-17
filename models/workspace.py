@@ -48,6 +48,7 @@ class Workspace(Base):
     # Relationships
     user = relationship("User", back_populates="workspaces")
     sessions = relationship("Session", back_populates="workspace", cascade="all, delete-orphan")
+    workspace_modules = relationship("WorkspaceModule", back_populates="workspace", cascade="all, delete-orphan")
     
     __table_args__ = (
         Index('ix_workspaces_user_id', 'user_id'),

@@ -2,6 +2,7 @@
 from pydantic import BaseModel, Field, EmailStr
 from typing import Optional, List, Dict, Any
 from datetime import datetime
+import enum
 
 
 # Authentication Schemas
@@ -246,6 +247,7 @@ class SessionResponse(BaseModel):
     end_datetime: Optional[datetime] = None
     is_stopped: bool
     status: str
+    passcode: Optional[str] = None  # Session passcode (6 characters)
     settings: Optional[Dict[str, Any]] = None  # Computed merged settings (template + custom)
     created_at: datetime
     updated_at: datetime
@@ -315,5 +317,173 @@ class ErrorResponse(BaseModel):
             "example": {
                 "detail": "Resource not found"
             }
+        }
+
+
+# Module Schemas
+class ModuleType(str, enum.Enum):
+    """Module type enum."""
+    QUIZ = "quiz"
+    POLL = "poll"
+    QUESTIONS = "questions"
+    TIMER = "timer"
+
+
+# Workspace Module Schemas
+class WorkspaceModuleResponse(BaseModel):
+    """Schema for workspace module response."""
+    id: int
+    workspace_id: int
+    name: str
+    module_type: str
+    settings: Optional[Dict[str, Any]] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+        json_schema_extra = {
+            "example": {
+                "id": 1,
+                "workspace_id": 1,
+                "name": "Quiz Module",
+                "module_type": "quiz",
+                "settings": {
+                    "question": "What is 2+2?",
+                    "options": [
+                        {"text": "3", "is_correct": False},
+                        {"text": "4", "is_correct": True},
+                        {"text": "5", "is_correct": False}
+                    ]
+                },
+                "created_at": "2025-01-16T10:00:00Z",
+                "updated_at": "2025-01-16T10:00:00Z"
+            }
+        }
+
+
+class WorkspaceModuleCreateRequest(BaseModel):
+    """Schema for creating workspace module."""
+    name: str = Field(..., min_length=1, max_length=200, description="Module name", example="Quiz Module")
+    module_type: str = Field(..., description="Module type (quiz, poll, questions, timer)", example="quiz")
+    settings: Optional[Dict[str, Any]] = Field(None, description="Module settings (JSON)", example={"question": "What is 2+2?"})
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "name": "Quiz Module",
+                "module_type": "quiz",
+                "settings": {
+                    "question": "What is 2+2?",
+                    "options": [
+                        {"text": "3", "is_correct": False},
+                        {"text": "4", "is_correct": True}
+                    ]
+                }
+            }
+        }
+
+
+class WorkspaceModuleUpdateRequest(BaseModel):
+    """Schema for updating workspace module."""
+    name: Optional[str] = Field(None, min_length=1, max_length=200, description="Module name", example="Updated Quiz Module")
+    module_type: Optional[str] = Field(None, description="Module type", example="quiz")
+    settings: Optional[Dict[str, Any]] = Field(None, description="Module settings (JSON)", example={"question": "Updated question"})
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "name": "Updated Quiz Module",
+                "settings": {
+                    "question": "Updated question"
+                }
+            }
+        }
+
+
+# Session Module Schemas
+class SessionModuleResponse(BaseModel):
+    """Schema for session module response."""
+    id: int
+    session_id: int
+    name: str
+    module_type: str
+    settings: Optional[Dict[str, Any]] = None
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+        json_schema_extra = {
+            "example": {
+                "id": 1,
+                "session_id": 1,
+                "name": "Quiz Module-1",
+                "module_type": "quiz",
+                "settings": {
+                    "question": "What is 2+2?",
+                    "options": [
+                        {"text": "3", "is_correct": False},
+                        {"text": "4", "is_correct": True}
+                    ]
+                },
+                "is_active": False,
+                "created_at": "2025-01-16T10:00:00Z",
+                "updated_at": "2025-01-16T10:00:00Z"
+            }
+        }
+
+
+class SessionModuleCreateRequest(BaseModel):
+    """Schema for creating session module (clones from workspace module)."""
+    workspace_module_id: int = Field(..., description="Workspace module ID to clone from", example=1)
+    name: Optional[str] = Field(None, min_length=1, max_length=200, description="Module name (auto-generated with suffix if not provided)", example="Quiz Module-1")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "workspace_module_id": 1,
+                "name": "Quiz Module-1"
+            }
+        }
+
+
+class SessionModuleUpdateRequest(BaseModel):
+    """Schema for updating session module."""
+    name: Optional[str] = Field(None, min_length=1, max_length=200, description="Module name", example="Updated Quiz Module")
+    module_type: Optional[str] = Field(None, description="Module type", example="quiz")
+    settings: Optional[Dict[str, Any]] = Field(None, description="Module settings (JSON)", example={"question": "Updated question"})
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "name": "Updated Quiz Module",
+                "settings": {
+                    "question": "Updated question"
+                }
+            }
+        }
+
+
+# Passcode Schemas
+class PasscodeResponse(BaseModel):
+    """Schema for passcode response."""
+    passcode: str = Field(..., description="Session passcode", example="ABC123")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "passcode": "ABC123"
+            }
+        }
+
+
+class RegeneratePasscodeRequest(BaseModel):
+    """Schema for regenerating passcode (empty body)."""
+    
+    class Config:
+        json_schema_extra = {
+            "example": {}
         }
 
