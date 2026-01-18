@@ -90,8 +90,15 @@ async def list_session_modules(
         # Apply fields filter if specified
         fields_set = parse_fields(fields)
         if fields_set:
-            filtered_list = filter_list_response(module_responses, fields_set)
-            return filtered_list
+            # Ensure required fields are always included
+            required_fields = {'id', 'session_id'}
+            fields_set = fields_set | required_fields
+            # Convert to dicts for filtering, then back to models
+            filtered_dicts = filter_list_response(module_responses, fields_set)
+            # Recreate models from filtered dicts to ensure validation
+            module_responses = [
+                SessionModuleResponse.model_validate(d) for d in filtered_dicts
+            ]
         
         return module_responses
     except HTTPException:
