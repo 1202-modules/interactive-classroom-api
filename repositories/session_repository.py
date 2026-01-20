@@ -53,10 +53,12 @@ class SessionRepository:
         """Create a new session (without commit)."""
         from utils.passcode import generate_unique_passcode
         
+        
         # Generate passcode if not provided
         if passcode is None:
             passcode = generate_unique_passcode(db)
         
+
         # Session is created stopped by default
         # updated_at will be updated automatically when is_stopped changes
         session = SessionModel(
