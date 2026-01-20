@@ -57,13 +57,15 @@ class SessionRepository:
         if passcode is None:
             passcode = generate_unique_passcode(db)
         
+        # Session is created stopped by default
+        # updated_at will be updated automatically when is_stopped changes
         session = SessionModel(
             workspace_id=workspace_id,
             name=name,
             description=description,
             status=SessionStatus.ACTIVE.value,
             custom_settings=None,
-            is_stopped=False,
+            is_stopped=True,
             passcode=passcode
         )
         db.add(session)
