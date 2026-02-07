@@ -23,7 +23,7 @@ class Session(Base):
     stopped_participant_count = Column(Integer, default=0, nullable=False)
     start_datetime = Column(DateTime(timezone=True), nullable=True)
     end_datetime = Column(DateTime(timezone=True), nullable=True)
-    is_stopped = Column(Boolean, default=False, nullable=False, index=True)
+    is_stopped = Column(Boolean, default=True, nullable=False, index=True)
     status = Column(String, nullable=False, default=SessionStatus.ACTIVE.value)
     custom_settings = Column(JSON, nullable=True)
     passcode = Column(String(6), unique=True, nullable=True, index=True)  # 6-character alphanumeric code
