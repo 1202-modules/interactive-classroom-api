@@ -53,7 +53,6 @@ router = APIRouter(prefix="/sessions/{session_id}/modules", tags=["Session Modul
 )
 async def list_session_modules(
     session_id: int,
-    include_deleted: bool = Query(False, description="Include deleted modules"),
     fields: Optional[str] = Query(None, description="Comma-separated list of fields to include (e.g., id,name,module_type)"),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
@@ -81,7 +80,7 @@ async def list_session_modules(
         modules = SessionModuleRepository.get_by_session_id(
             db=db,
             session_id=session_id,
-            include_deleted=include_deleted
+            include_deleted=True
         )
         
         # Convert to response models

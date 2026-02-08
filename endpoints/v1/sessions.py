@@ -69,7 +69,6 @@ router = APIRouter(tags=["Sessions"])
 async def list_sessions(
     workspace_id: int,
     status_filter: Optional[str] = Query(None, description="Filter by status (active, archive)", alias="status"),
-    include_deleted: bool = Query(False, description="Include deleted sessions"),
     fields: Optional[str] = Query(None, description="Comma-separated list of fields to include (e.g., id,name,status)"),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
@@ -94,7 +93,7 @@ async def list_sessions(
             db=db,
             workspace_id=workspace_id,
             status=status_filter,
-            include_deleted=include_deleted
+            include_deleted=True
         )
         
         # Get merged settings for each session

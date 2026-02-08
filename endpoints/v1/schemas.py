@@ -341,6 +341,8 @@ class WorkspaceModuleResponse(BaseModel):
     name: str
     module_type: str
     settings: Optional[Dict[str, Any]] = None
+    is_deleted: bool = Field(default=False)
+    deleted_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
 
@@ -414,6 +416,8 @@ class SessionModuleResponse(BaseModel):
     module_type: str
     settings: Optional[Dict[str, Any]] = None
     is_active: bool
+    is_deleted: bool = Field(default=False)
+    deleted_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
 

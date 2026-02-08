@@ -52,7 +52,6 @@ router = APIRouter(prefix="/workspaces/{workspace_id}/modules", tags=["Workspace
 )
 async def list_workspace_modules(
     workspace_id: int,
-    include_deleted: bool = Query(False, description="Include deleted modules"),
     fields: Optional[str] = Query(None, description="Comma-separated list of fields to include (e.g., id,name,module_type)"),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
@@ -77,7 +76,7 @@ async def list_workspace_modules(
         modules = WorkspaceModuleRepository.get_by_workspace_id(
             db=db,
             workspace_id=workspace_id,
-            include_deleted=include_deleted
+            include_deleted=True
         )
         
         # Convert to response models
