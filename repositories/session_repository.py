@@ -12,8 +12,7 @@ class SessionRepository:
     def get_by_id(db: Session, session_id: int) -> Optional[SessionModel]:
         """Get session by ID."""
         return db.query(SessionModel).filter(
-            SessionModel.id == session_id,
-            SessionModel.is_deleted == False
+            SessionModel.id == session_id
         ).first()
     
     @staticmethod

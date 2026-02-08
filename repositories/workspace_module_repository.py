@@ -12,8 +12,7 @@ class WorkspaceModuleRepository:
     def get_by_id(db: Session, module_id: int) -> Optional[WorkspaceModule]:
         """Get workspace module by ID."""
         return db.query(WorkspaceModule).filter(
-            WorkspaceModule.id == module_id,
-            WorkspaceModule.is_deleted == False
+            WorkspaceModule.id == module_id
         ).first()
     
     @staticmethod
