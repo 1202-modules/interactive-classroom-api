@@ -82,18 +82,11 @@ async def list_workspace_modules(
         # Convert to response models
         module_responses = [WorkspaceModuleResponse.model_validate(m) for m in modules]
         
-        # Apply fields filter if specified
+        # When fields specified: return only requested keys (no defaults for missing fields)
         fields_set = parse_fields(fields)
         if fields_set:
-            # Ensure required fields are always included
-            required_fields = {'id', 'workspace_id'}
-            fields_set = fields_set | required_fields
-            # Convert to dicts for filtering, then back to models
             filtered_dicts = filter_list_response(module_responses, fields_set)
-            # Recreate models from filtered dicts to ensure validation
-            module_responses = [
-                WorkspaceModuleResponse.model_validate(d) for d in filtered_dicts
-            ]
+            return filtered_dicts
         
         return module_responses
     except HTTPException:

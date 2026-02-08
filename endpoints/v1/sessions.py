@@ -104,18 +104,11 @@ async def list_sessions(
             session_dict['settings'] = merged_settings
             session_responses.append(SessionResponse(**session_dict))
         
-        # Apply fields filter if specified
+        # When fields specified: return only requested keys (no defaults for missing fields)
         fields_set = parse_fields(fields)
         if fields_set:
-            # Ensure required fields are always included
-            required_fields = {'id', 'workspace_id'}
-            fields_set = fields_set | required_fields
-            # Convert to dicts for filtering, then back to models
             filtered_dicts = filter_list_response(session_responses, fields_set)
-            # Recreate models from filtered dicts to ensure validation
-            session_responses = [
-                SessionResponse.model_validate(d) for d in filtered_dicts
-            ]
+            return {"sessions": filtered_dicts, "total": len(session_responses)}
         
         return SessionListResponse(
             sessions=session_responses,
