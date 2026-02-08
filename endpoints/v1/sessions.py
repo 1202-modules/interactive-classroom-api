@@ -43,7 +43,9 @@ router = APIRouter(tags=["Sessions"])
                                 "status": "active",
                                 "settings": {"poll_duration": 30},
                                 "created_at": "2024-01-15T09:00:00Z",
-                                "updated_at": "2024-01-15T12:00:00Z"
+                                "updated_at": "2024-01-15T12:00:00Z",
+                                "is_deleted": False,
+                                "deleted_at": None
                             }
                         ],
                         "total": 1

@@ -253,6 +253,8 @@ class SessionResponse(BaseModel):
     settings: Optional[Dict[str, Any]] = None  # Computed merged settings (template + custom)
     created_at: datetime
     updated_at: datetime
+    is_deleted: bool = Field(default=False)
+    deleted_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
