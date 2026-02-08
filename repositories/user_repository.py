@@ -13,8 +13,7 @@ class UserRepository:
     def get_by_id(db: Session, user_id: int) -> Optional[User]:
         """Get user by ID."""
         return db.query(User).filter(
-            User.id == user_id,
-            User.is_deleted == False
+            User.id == user_id
         ).first()
     
     @staticmethod
