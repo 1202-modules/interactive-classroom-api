@@ -100,18 +100,11 @@ async def list_workspaces(
             workspace_response.has_live_session = has_live_session
             workspace_responses.append(workspace_response)
         
-        # Apply fields filter if specified
+        # When fields specified: return only requested keys (no defaults for missing fields)
         fields_set = parse_fields(fields)
         if fields_set:
-            # Ensure required fields are always included
-            required_fields = {'id', 'user_id'}
-            fields_set = fields_set | required_fields
-            # Convert to dicts for filtering, then back to models
             filtered_dicts = filter_list_response(workspace_responses, fields_set)
-            # Recreate models from filtered dicts to ensure validation
-            workspace_responses = [
-                WorkspaceResponse.model_validate(d) for d in filtered_dicts
-            ]
+            return {"workspaces": filtered_dicts, "total": len(workspace_responses)}
         
         return WorkspaceListResponse(
             workspaces=workspace_responses,
