@@ -5,7 +5,7 @@ from typing import Optional
 from core.db import get_db
 from core.auth import get_current_user
 from services.user_service import UserService
-from endpoints.v1.schemas import UserResponse, UserUpdateRequest
+from endpoints.v1.schemas import UserResponse, UserUpdateRequest, UserPreferencesUpdateRequest
 from utils.query_params import parse_fields, filter_model_response
 import structlog
 
@@ -155,6 +155,70 @@ async def update_current_user_profile(
         raise
     except Exception as e:
         logger.error("update_profile_error", user_id=current_user["user_id"], error=str(e), exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error"
+        )
+
+
+@router.patch(
+    "/me/preferences",
+    summary="Update user preferences",
+    description="Update theme, timezone, notifications and other user preferences.",
+)
+async def update_preferences(
+    prefs: UserPreferencesUpdateRequest,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Update current user preferences."""
+    try:
+        prefs_dict = prefs.model_dump(exclude_none=True)
+        if not prefs_dict:
+            return {"message": "No preferences to update"}
+        updated_user = UserService.update_profile(
+            db=db,
+            user_id=current_user["user_id"],
+            preferences=prefs_dict
+        )
+        if not updated_user:
+            user = UserService.get_profile(db, current_user["user_id"])
+            if not user:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+            return {"preferences": user.preferences or {}}
+        return {"preferences": updated_user.preferences or {}}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("update_preferences_error", user_id=current_user["user_id"], error=str(e), exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error"
+        )
+
+
+@router.delete(
+    "/me",
+    summary="Delete account",
+    description="Permanently delete your account (soft delete). All data will be removed.",
+)
+async def delete_account(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Delete current user account."""
+    try:
+        ok = UserService.delete_account(db, current_user["user_id"])
+        if not ok:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found or already deleted"
+            )
+        return {"message": "Account deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("delete_account_error", user_id=current_user["user_id"], error=str(e), exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error"

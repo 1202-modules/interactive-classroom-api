@@ -1,5 +1,5 @@
 """Organization repository."""
-from typing import Optional
+from typing import List, Optional
 
 from sqlalchemy.orm import Session as DBSession
 
@@ -16,3 +16,10 @@ class OrganizationRepository:
             Organization.id == org_id,
             Organization.is_deleted == False
         ).first()
+
+    @staticmethod
+    def get_all(db: DBSession) -> List[Organization]:
+        """Get all non-deleted organizations."""
+        return db.query(Organization).filter(
+            Organization.is_deleted == False
+        ).order_by(Organization.name).all()

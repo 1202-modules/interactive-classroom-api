@@ -1,7 +1,7 @@
 """Main API router."""
 from fastapi import APIRouter
 from endpoints import health
-from endpoints.v1 import auth, users, workspaces, session_guest, session_join, session_participants, session_questions, session_timer, sessions, workspace_modules, session_modules
+from endpoints.v1 import auth, users, workspaces, organizations, session_guest, session_join, session_participants, session_questions, session_timer, sessions, workspace_modules, session_modules
 
 api_router = APIRouter()
 
@@ -12,6 +12,7 @@ api_router.include_router(health.router)
 api_router.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
 api_router.include_router(users.router, prefix="/api/v1/users", tags=["Users"])
 api_router.include_router(workspaces.router, prefix="/api/v1/workspaces", tags=["Workspaces"])
+api_router.include_router(organizations.router, prefix="/api/v1/organizations", tags=["Organizations"])
 
 # Session guest and join (by-passcode) must be before sessions so /sessions/by-passcode/{passcode} is matched first
 api_router.include_router(session_guest.router, prefix="/api/v1", tags=["Session Guest"])

@@ -34,18 +34,20 @@ class UserService:
         user_id: int,
         first_name: Optional[str] = None,
         last_name: Optional[str] = None,
-        avatar_url: Optional[str] = None
+        avatar_url: Optional[str] = None,
+        preferences: Optional[dict] = None
     ) -> Optional[User]:
         """
         Update user profile.
-        
+
         Args:
             db: Database session
             user_id: User ID
             first_name: First name (optional)
             last_name: Last name (optional)
             avatar_url: Avatar URL (optional)
-        
+            preferences: User preferences dict (optional)
+
         Returns:
             Updated user object or None if not found
         """
@@ -54,7 +56,8 @@ class UserService:
             user_id=user_id,
             first_name=first_name,
             last_name=last_name,
-            avatar_url=avatar_url
+            avatar_url=avatar_url,
+            preferences=preferences
         )
         
         if updated_user:
@@ -70,4 +73,14 @@ class UserService:
             )
         
         return updated_user
+
+    @staticmethod
+    def delete_account(db: Session, user_id: int) -> bool:
+        """Soft delete user account. Returns True on success."""
+        user = UserRepository.soft_delete(db, user_id)
+        if user:
+            db.commit()
+            logger.info("user_account_deleted", user_id=user_id)
+            return True
+        return False
 

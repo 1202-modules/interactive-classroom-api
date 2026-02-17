@@ -56,13 +56,14 @@ class UserRepository:
         user_id: int,
         first_name: Optional[str] = None,
         last_name: Optional[str] = None,
-        avatar_url: Optional[str] = None
+        avatar_url: Optional[str] = None,
+        preferences: Optional[dict] = None
     ) -> Optional[User]:
         """Update an existing user (without commit)."""
         user = UserRepository.get_by_id(db, user_id)
         if not user:
             return None
-        
+
         updated = False
         if first_name is not None and user.first_name != first_name:
             user.first_name = first_name
@@ -73,7 +74,13 @@ class UserRepository:
         if avatar_url is not None and user.avatar_url != avatar_url:
             user.avatar_url = avatar_url
             updated = True
-        
+        if preferences is not None:
+            current = user.preferences or {}
+            merged = {**current, **{k: v for k, v in preferences.items() if v is not None}}
+            if merged != (user.preferences or {}):
+                user.preferences = merged
+                updated = True
+
         return user if updated else None
     
     @staticmethod

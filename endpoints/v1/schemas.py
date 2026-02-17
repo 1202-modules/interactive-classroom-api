@@ -151,6 +151,7 @@ class UserResponse(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     avatar_url: Optional[str] = None
+    preferences: Optional[Dict[str, Any]] = None
     created_at: datetime
     updated_at: datetime
 
@@ -172,6 +173,26 @@ class UserUpdateRequest(BaseModel):
                 "avatar_url": "https://example.com/avatar.jpg"
             }
         }
+
+
+class UserPreferencesResponse(BaseModel):
+    """Schema for user preferences response."""
+    timezone: Optional[str] = Field(None, description="User timezone (IANA, e.g. Europe/Moscow)")
+    timezone_mode: Optional[str] = Field(None, description="'auto' or 'manual'")
+    theme: Optional[str] = Field(None, description="'light', 'dark', or 'auto'")
+    sound_enabled: Optional[bool] = Field(None, description="Play notification sounds (e.g. timer)")
+    browser_notifications: Optional[bool] = Field(None, description="Enable browser notifications")
+    notification_sound: Optional[str] = Field(None, description="Sound preset: default, gentle, classic, none")
+
+
+class UserPreferencesUpdateRequest(BaseModel):
+    """Schema for updating user preferences."""
+    timezone: Optional[str] = Field(None, description="User timezone (IANA)")
+    timezone_mode: Optional[str] = Field(None, description="'auto' or 'manual'")
+    theme: Optional[str] = Field(None, description="'light', 'dark', or 'auto'")
+    sound_enabled: Optional[bool] = Field(None, description="Play notification sounds")
+    browser_notifications: Optional[bool] = Field(None, description="Enable browser notifications")
+    notification_sound: Optional[str] = Field(None, description="Sound preset")
 
 
 # Workspace Schemas
