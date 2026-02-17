@@ -58,6 +58,7 @@ router = APIRouter(tags=["Workspaces"])
 )
 async def list_workspaces(
     status_filter: Optional[str] = Query(None, description="Filter by status (active, archive)", alias="status"),
+    include_deleted: bool = Query(False, description="Include deleted workspaces in the result"),
     fields: Optional[str] = Query(None, description="Comma-separated list of fields to include (e.g., id,name,status)"),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
@@ -68,7 +69,7 @@ async def list_workspaces(
             db=db,
             user_id=current_user["user_id"],
             status=status_filter,
-            include_deleted=True
+            include_deleted=include_deleted
         )
         
         # Calculate participant_count and has_live_session for each workspace
