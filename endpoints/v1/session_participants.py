@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from core.db import get_db
 from core.auth import verify_token
 from repositories.session_repository import SessionRepository
+from repositories.session_module_repository import SessionModuleRepository
 from repositories.workspace_repository import WorkspaceRepository
 from repositories.user_repository import UserRepository
 from services.session_participant_service import SessionParticipantService
@@ -176,6 +177,54 @@ async def list_participants_by_passcode(
         raise
     except Exception as e:
         logger.error("list_participants_error", passcode=passcode, error=str(e), exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
+        )
+
+
+@router.get(
+    "/sessions/by-passcode/{passcode}/modules",
+    summary="List session modules (by passcode)",
+    description="For lecturer (owner) or participant in session. Requires auth. Returns minimal module info for participant UI.",
+    responses={
+        200: {"description": "Modules list"},
+        401: {"description": "Not authenticated"},
+        403: {"description": "Not authorized"},
+        404: {"description": "Session not found"},
+    },
+)
+async def list_modules_by_passcode(
+    passcode: str,
+    db: Session = Depends(get_db),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(optional_bearer),
+):
+    auth_token = _get_auth_token(credentials)
+    try:
+        session_id = _can_access_participants_list(passcode, db, auth_token)
+        modules = SessionModuleRepository.get_by_session_id(
+            db=db,
+            session_id=session_id,
+            include_deleted=False,
+        )
+        items = [
+            {
+                "id": m.id,
+                "name": m.name,
+                "module_type": m.module_type,
+                "is_active": m.is_active,
+            }
+            for m in modules
+        ]
+        active = next((m for m in items if m.get("is_active") is True), None)
+        return {
+            "modules": items,
+            "active_module": active,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("list_modules_error", passcode=passcode, error=str(e), exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error",
