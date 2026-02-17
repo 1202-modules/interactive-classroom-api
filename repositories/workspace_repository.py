@@ -127,7 +127,12 @@ class WorkspaceRepository:
         if not hard:
             return WorkspaceRepository.soft_delete(db, workspace_id)
         
-        # Hard delete
+        # Hard delete: explicitly delete sessions first to avoid SQLAlchemy cascade issues
+        # Sessions will cascade delete their modules, participants, etc. via DB foreign keys
+        from models.session import Session as SessionModel
+        db.query(SessionModel).filter(SessionModel.workspace_id == workspace_id).delete(synchronize_session=False)
+        
+        # Now delete workspace
         workspace = db.query(Workspace).filter(Workspace.id == workspace_id).first()
         if not workspace:
             return None

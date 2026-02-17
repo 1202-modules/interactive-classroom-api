@@ -35,7 +35,7 @@ class Session(Base):
     
     # Relationships
     workspace = relationship("Workspace", back_populates="sessions")
-    session_modules = relationship("SessionModule", back_populates="session", foreign_keys="SessionModule.session_id")
+    session_modules = relationship("SessionModule", back_populates="session", foreign_keys="SessionModule.session_id", cascade="all, delete-orphan")
     active_module = relationship("SessionModule", foreign_keys=[active_module_id], post_update=True)
     session_participants = relationship("SessionParticipant", back_populates="session", cascade="all, delete-orphan")
     
