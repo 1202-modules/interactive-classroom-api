@@ -73,10 +73,10 @@ class AuthService:
             email_sent=email_sent
         )
         
-        return {
-            "email": email,
-            "verification_code_sent": email_sent
-        }
+        result = {"email": email, "verification_code_sent": email_sent}
+        if not all([settings.SMTP_HOST, settings.SMTP_USER, settings.SMTP_PASSWORD, settings.SMTP_FROM_EMAIL]):
+            result["code"] = verification_code
+        return result
     
     @staticmethod
     def verify_email(
@@ -253,9 +253,10 @@ class AuthService:
         
         logger.info("verification_code_resent", pending_reg_id=pending_reg.id, email=email, email_sent=email_sent)
         
-        return {
-            "verification_code_sent": email_sent
-        }
+        result = {"verification_code_sent": email_sent}
+        if not all([settings.SMTP_HOST, settings.SMTP_USER, settings.SMTP_PASSWORD, settings.SMTP_FROM_EMAIL]):
+            result["code"] = verification_code
+        return result
     
     @staticmethod
     def refresh_access_token(

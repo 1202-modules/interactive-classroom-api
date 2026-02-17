@@ -33,11 +33,11 @@ class Settings(BaseSettings):
     
     # Email (for verification codes)
     SMTP_HOST: Optional[str] = None
-    SMTP_PORT: int = 587
+    SMTP_PORT: Optional[int] = 587
     SMTP_USER: Optional[str] = None
     SMTP_PASSWORD: Optional[str] = None
     SMTP_FROM_EMAIL: Optional[str] = None
-    SMTP_USE_TLS: bool = True
+    SMTP_USE_TLS: Optional[bool] = True
     
     # Verification code settings
     VERIFICATION_CODE_EXPIRE_MINUTES: int = 15

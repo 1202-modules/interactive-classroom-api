@@ -58,8 +58,11 @@ def send_verification_email(email: str, code: str) -> bool:
         
         msg.attach(MIMEText(body, 'plain'))
         
-        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
-            if settings.SMTP_USE_TLS:
+        smtp_port = settings.SMTP_PORT or 587
+        smtp_use_tls = settings.SMTP_USE_TLS if settings.SMTP_USE_TLS is not None else True
+        
+        with smtplib.SMTP(settings.SMTP_HOST, smtp_port) as server:
+            if smtp_use_tls:
                 server.starttls()
             server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
             server.send_message(msg)

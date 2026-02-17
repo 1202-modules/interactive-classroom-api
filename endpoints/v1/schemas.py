@@ -24,6 +24,7 @@ class RegisterResponse(BaseModel):
     """Schema for registration response."""
     email: str = Field(..., description="User email", example="user@example.com")
     verification_code_sent: bool = Field(..., description="Whether verification code was sent", example=True)
+    code: Optional[str] = Field(None, description="Code in response (only when SMTP not configured, for testing)")
 
     class Config:
         json_schema_extra = {
@@ -113,6 +114,7 @@ class ResendCodeRequest(BaseModel):
 class ResendCodeResponse(BaseModel):
     """Schema for resend code response."""
     verification_code_sent: bool = Field(..., description="Whether verification code was sent", example=True)
+    code: Optional[str] = Field(None, description="Code in response (only when SMTP not configured, for testing)")
 
     class Config:
         json_schema_extra = {
