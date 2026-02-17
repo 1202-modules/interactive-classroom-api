@@ -44,7 +44,7 @@ class Settings(BaseSettings):
     VERIFICATION_CODE_LENGTH: int = 6
 
     # Guest (email-code session) token TTL
-    GUEST_TOKEN_EXPIRE_HOURS: int = 24
+    GUEST_TOKEN_EXPIRE_DAYS: int = 90
 
     # Anonymous participant display
     ANONYMOUS_SLUG_PREFIX: str = "anon_"

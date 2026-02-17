@@ -8,7 +8,7 @@ from repositories.session_module_repository import SessionModuleRepository
 from repositories.session_repository import SessionRepository
 from repositories.workspace_repository import WorkspaceRepository
 from repositories.session_module_timer_state_repository import SessionModuleTimerStateRepository
-from utils.module_settings import get_timer_settings, DEFAULT_TIMER_DURATION_SECONDS
+from utils.module_settings import get_timer_settings
 import structlog
 
 logger = structlog.get_logger(__name__)
@@ -77,9 +77,9 @@ class SessionTimerService:
         SessionTimerService._validate_timer_module(db, module_id, session_id)
         module = SessionModuleRepository.get_by_id(db, module_id)
         opts = _get_timer_options(module)
-        duration = opts.get("duration_seconds") or DEFAULT_TIMER_DURATION_SECONDS
+        duration = opts.get("duration_seconds") or 60
         if duration <= 0:
-            duration = DEFAULT_TIMER_DURATION_SECONDS
+            duration = 60
 
         SessionModuleTimerStateRepository.start(db, module_id, duration)
         db.commit()
