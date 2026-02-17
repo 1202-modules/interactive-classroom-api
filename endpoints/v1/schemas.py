@@ -202,7 +202,15 @@ class WorkspaceCreateRequest(BaseModel):
     """Schema for creating workspace."""
     name: str = Field(..., min_length=1, max_length=200, description="Workspace name", example="My Workspace")
     description: Optional[str] = Field(None, max_length=1000, description="Workspace description", example="A workspace for my classes")
-    template_settings: Optional[Dict[str, Any]] = Field(None, description="Template settings for sessions (JSON)", example={"poll_duration": 30, "show_results": True})
+    template_settings: Optional[Dict[str, Any]] = Field(
+        None,
+        description="Session defaults: default_session_duration_min (5-420), max_participants (1-500), participant_entry_mode (anonymous|registered|sso|email_code)",
+        example={
+            "default_session_duration_min": 90,
+            "max_participants": 100,
+            "participant_entry_mode": "anonymous",
+        },
+    )
 
     class Config:
         json_schema_extra = {
@@ -210,9 +218,9 @@ class WorkspaceCreateRequest(BaseModel):
                 "name": "My Workspace",
                 "description": "A workspace for my classes",
                 "template_settings": {
-                    "poll_duration": 30,
-                    "show_results": True,
-                    "allow_anonymous": False
+                    "default_session_duration_min": 90,
+                    "max_participants": 100,
+                    "participant_entry_mode": "anonymous",
                 }
             }
         }
@@ -222,7 +230,15 @@ class WorkspaceUpdateRequest(BaseModel):
     """Schema for updating workspace."""
     name: Optional[str] = Field(None, min_length=1, max_length=200, description="Workspace name", example="Updated Workspace")
     description: Optional[str] = Field(None, max_length=1000, description="Workspace description", example="Updated description")
-    template_settings: Optional[Dict[str, Any]] = Field(None, description="Template settings for sessions (JSON)", example={"poll_duration": 60})
+    template_settings: Optional[Dict[str, Any]] = Field(
+        None,
+        description="Session defaults: default_session_duration_min (5-420), max_participants (1-500), participant_entry_mode (anonymous|registered|sso|email_code)",
+        example={
+            "default_session_duration_min": 60,
+            "max_participants": 50,
+            "participant_entry_mode": "registered",
+        },
+    )
 
     class Config:
         json_schema_extra = {
@@ -230,8 +246,9 @@ class WorkspaceUpdateRequest(BaseModel):
                 "name": "Updated Workspace",
                 "description": "Updated description",
                 "template_settings": {
-                    "poll_duration": 60,
-                    "show_results": True
+                    "default_session_duration_min": 60,
+                    "max_participants": 50,
+                    "participant_entry_mode": "registered",
                 }
             }
         }

@@ -7,7 +7,8 @@ from models.workspace import Workspace, WorkspaceStatus
 from models.session import SessionStatus
 from datetime import datetime
 import structlog
-import json
+
+from utils.template_settings import validate_template_settings as validate_template_settings_schema
 
 logger = structlog.get_logger(__name__)
 
@@ -462,23 +463,16 @@ class WorkspaceService:
     @staticmethod
     def validate_template_settings(template_settings: Optional[dict]) -> None:
         """
-        Validate template_settings JSON structure.
-        
+        Validate template_settings against Session defaults schema.
+
+        Validates known fields (default_session_duration_min, max_participants,
+        participant_entry_mode). Unknown fields are allowed for future features.
+
         Args:
-            template_settings: Template settings dictionary
-        
+            template_settings: Template settings dictionary (Session defaults)
+
         Raises:
             ValueError: If template_settings is invalid
         """
-        if template_settings is None:
-            return
-        
-        if not isinstance(template_settings, dict):
-            raise ValueError("template_settings must be a dictionary")
-        
-        # Try to serialize to JSON to ensure it's valid
-        try:
-            json.dumps(template_settings)
-        except (TypeError, ValueError) as e:
-            raise ValueError(f"Invalid template_settings JSON: {str(e)}")
+        validate_template_settings_schema(template_settings)
 
