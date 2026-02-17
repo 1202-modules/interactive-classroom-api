@@ -37,6 +37,7 @@ class Session(Base):
     workspace = relationship("Workspace", back_populates="sessions")
     session_modules = relationship("SessionModule", back_populates="session", foreign_keys="SessionModule.session_id")
     active_module = relationship("SessionModule", foreign_keys=[active_module_id], post_update=True)
+    session_participants = relationship("SessionParticipant", back_populates="session", cascade="all, delete-orphan")
     
     __table_args__ = (
         Index('ix_sessions_workspace_id', 'workspace_id'),

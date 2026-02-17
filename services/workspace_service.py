@@ -3,6 +3,7 @@ from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
 from repositories.workspace_repository import WorkspaceRepository
 from repositories.session_repository import SessionRepository
+from repositories.organization_repository import OrganizationRepository
 from models.workspace import Workspace, WorkspaceStatus
 from models.session import SessionStatus
 from datetime import datetime
@@ -44,7 +45,7 @@ class WorkspaceService:
         WorkspaceService.check_workspace_name_duplicate(db, user_id, name)
         
         # Validate template_settings
-        WorkspaceService.validate_template_settings(template_settings)
+        WorkspaceService.validate_template_settings(template_settings, db)
         
         workspace = WorkspaceRepository.create(
             db=db,
@@ -377,7 +378,7 @@ class WorkspaceService:
         
         # Validate template_settings if provided
         if template_settings is not None:
-            WorkspaceService.validate_template_settings(template_settings)
+            WorkspaceService.validate_template_settings(template_settings, db)
         
         # Store old template for synchronization
         old_template = workspace.template_settings or {}
@@ -461,18 +462,26 @@ class WorkspaceService:
                 raise ValueError(f"Workspace with name '{name}' already exists")
     
     @staticmethod
-    def validate_template_settings(template_settings: Optional[dict]) -> None:
+    def validate_template_settings(
+        template_settings: Optional[dict],
+        db: Optional[Session] = None
+    ) -> None:
         """
         Validate template_settings against Session defaults schema.
 
-        Validates known fields (default_session_duration_min, max_participants,
-        participant_entry_mode). Unknown fields are allowed for future features.
+        Validates known fields. When participant_entry_mode is sso and
+        sso_organization_id is set, verifies organization exists (requires db).
 
         Args:
             template_settings: Template settings dictionary (Session defaults)
+            db: Optional DB session for organization existence check
 
         Raises:
             ValueError: If template_settings is invalid
         """
         validate_template_settings_schema(template_settings)
+        if db and template_settings and template_settings.get("participant_entry_mode") == "sso":
+            org_id = template_settings.get("sso_organization_id")
+            if org_id and not OrganizationRepository.get_by_id(db, org_id):
+                raise ValueError(f"Organization with id {org_id} not found")
 

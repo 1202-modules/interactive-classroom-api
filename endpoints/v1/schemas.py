@@ -506,9 +506,167 @@ class PasscodeResponse(BaseModel):
 
 class RegeneratePasscodeRequest(BaseModel):
     """Schema for regenerating passcode (empty body)."""
-    
+
     class Config:
         json_schema_extra = {
             "example": {}
         }
+
+
+# Session guest (by-passcode, email-code) schemas
+class SessionByPasscodePublicResponse(BaseModel):
+    """Public session info for guest join screen."""
+    id: int = Field(..., description="Session ID")
+    name: str = Field(..., description="Session name")
+    participant_entry_mode: str = Field(..., description="anonymous | registered | sso | email_code")
+    email_code_domains_whitelist: List[str] = Field(default_factory=list, description="Allowed email domains for email_code")
+    sso_organization_id: Optional[int] = Field(None, description="Organization ID when participant_entry_mode is sso")
+    guest_authenticated: Optional[bool] = Field(None, description="True if valid guest token in Authorization — skip form, use stored token")
+    email: Optional[str] = Field(None, description="Guest email when guest_authenticated")
+    display_name: Optional[str] = Field(None, description="Display name when guest_authenticated")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "id": 1,
+                "name": "Lecture 1",
+                "participant_entry_mode": "email_code",
+                "email_code_domains_whitelist": ["uni.edu", "company.com"],
+            }
+        }
+
+
+class SessionEmailCodeRequestRequest(BaseModel):
+    """Request verification code for email-code join."""
+    email: EmailStr = Field(..., description="Guest email", example="user@domain.com")
+
+
+class SessionEmailCodeRequestResponse(BaseModel):
+    """Response: code sent to email. Token only from verify endpoint."""
+    verification_code_sent: bool = Field(..., description="True if code was sent to email")
+    code: Optional[str] = Field(None, description="Code in response (only when SMTP not configured, for testing)")
+
+
+class SessionEmailCodeVerifyRequest(BaseModel):
+    """Verify email code and optional display name."""
+    email: EmailStr = Field(..., description="Guest email", example="user@domain.com")
+    code: str = Field(..., min_length=1, description="Verification code")
+    display_name: Optional[str] = Field(None, description="Display name for the guest")
+
+
+class SessionEmailCodeVerifyResponse(BaseModel):
+    """Guest token after successful verification."""
+    access_token: str = Field(..., description="Guest JWT")
+    token_type: str = Field(default="bearer", description="Token type")
+    email: str = Field(..., description="Guest email")
+    display_name: Optional[str] = Field(None, description="Display name")
+
+
+# Session join schemas (anonymous, registered, guest, sso)
+class SessionJoinAnonymousRequest(BaseModel):
+    """Optional display name for anonymous participant."""
+    display_name: Optional[str] = Field(None, description="Display name", max_length=200)
+
+
+class SessionJoinAnonymousResponse(BaseModel):
+    """Participant token for anonymous join."""
+    participant_token: str = Field(..., description="JWT for anonymous participant")
+    token_type: str = Field(default="bearer", description="Token type")
+    participant_id: int = Field(..., description="Participant ID")
+    session_id: int = Field(..., description="Session ID")
+    display_name: Optional[str] = Field(None, description="Display name; null = show translated fallback on frontend")
+
+
+class SessionJoinRegisteredResponse(BaseModel):
+    """Response for registered user join (use user token for subsequent requests)."""
+    participant_id: int = Field(..., description="Participant ID")
+    session_id: int = Field(..., description="Session ID")
+    display_name: Optional[str] = Field(None, description="Display name; null = show translated fallback on frontend")
+
+
+class SessionJoinGuestResponse(BaseModel):
+    """Response for guest (email-code) join (use guest token for subsequent requests)."""
+    participant_id: int = Field(..., description="Participant ID")
+    session_id: int = Field(..., description="Session ID")
+    display_name: Optional[str] = Field(None, description="Display name; null = show translated fallback on frontend")
+
+
+# Heartbeat and participants
+class SessionHeartbeatRequest(BaseModel):
+    """Optional body for heartbeat. Anonymous may send participant_token here."""
+    participant_token: Optional[str] = Field(None, description="Participant JWT for anonymous (alternative to Authorization)")
+
+
+class SessionParticipantItem(BaseModel):
+    """Single participant in list. display_name null/empty = show translated fallback on frontend."""
+    id: int
+    display_name: Optional[str] = None
+    participant_type: str
+    is_active: bool
+
+
+class SessionParticipantsResponse(BaseModel):
+    """List of participants with active count."""
+    participants: List["SessionParticipantItem"]
+    total: int
+    active_count: int
+
+
+# Questions module
+class SessionQuestionMessageCreateRequest(BaseModel):
+    """Create question message."""
+    content: str = Field(..., min_length=1, description="Message content")
+    parent_id: Optional[int] = Field(None, description="Parent message ID for replies")
+
+
+class SessionQuestionMessageItem(BaseModel):
+    """Single question message."""
+    id: int
+    session_module_id: int
+    participant_id: int
+    author_display_name: Optional[str] = None
+    parent_id: Optional[int] = None
+    content: str
+    likes_count: int
+    is_answered: bool
+    created_at: Optional[str] = None
+    children: List["SessionQuestionMessageItem"] = Field(default_factory=list)
+
+
+class SessionQuestionModuleSettings(BaseModel):
+    """Questions module settings (subset for client)."""
+    likes_enabled: bool = True
+    allow_participant_answers: bool = True
+    length_limit_mode: str = "moderate"
+    max_length: int = 500
+
+
+class SessionQuestionMessagesResponse(BaseModel):
+    """List of question messages."""
+    messages: List[SessionQuestionMessageItem]
+    settings: Optional[SessionQuestionModuleSettings] = None
+
+
+# Resolve forward reference for recursive SessionQuestionMessageItem
+SessionQuestionMessageItem.model_rebuild()
+
+
+class SessionQuestionLecturerPatchRequest(BaseModel):
+    """Lecturer patch for message."""
+    is_answered: Optional[bool] = Field(None, description="Mark as answered")
+    delete: Optional[bool] = Field(None, description="Soft delete message")
+
+
+# Timer module
+class SessionTimerStateResponse(BaseModel):
+    """Timer state for display."""
+    is_paused: bool
+    end_at: Optional[str] = None
+    remaining_seconds: Optional[int] = None
+    sound_notification_enabled: bool = True
+
+
+class SessionTimerPauseRequest(BaseModel):
+    """Pause timer with remaining seconds from client."""
+    remaining_seconds: int = Field(..., ge=0, description="Remaining seconds when pausing")
 

@@ -7,10 +7,13 @@ from core.auth import get_current_user
 from repositories.session_repository import SessionRepository
 from repositories.workspace_repository import WorkspaceRepository
 from services.session_service import SessionService
+from services.session_participant_service import SessionParticipantService
 from endpoints.v1.schemas import (
     SessionResponse, SessionListResponse,
     SessionCreateRequest, SessionUpdateRequest,
-    MessageResponse, PasscodeResponse
+    MessageResponse, PasscodeResponse,
+    SessionParticipantItem,
+    SessionParticipantsResponse,
 )
 from utils.query_params import parse_fields, filter_model_response, filter_list_response
 import structlog
@@ -223,6 +226,54 @@ async def get_session(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error"
+        )
+
+
+@router.get(
+    "/sessions/{session_id}/participants",
+    response_model=SessionParticipantsResponse,
+    summary="List participants (lecturer)",
+    description="Get participants for a session. Lecturer (workspace owner) only.",
+    responses={
+        200: {"description": "Participants list"},
+        401: {"description": "Not authenticated"},
+        404: {"description": "Session not found"},
+    },
+)
+async def list_session_participants(
+    session_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """List participants for a session. Lecturer only."""
+    try:
+        session = SessionRepository.get_by_id(db, session_id)
+        if not session:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Session not found",
+            )
+        workspace = WorkspaceRepository.get_by_id(db, session.workspace_id)
+        if not workspace or workspace.user_id != current_user["user_id"]:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Session not found",
+            )
+        participants = SessionParticipantService.list_participants(db, session_id)
+        active_count = SessionParticipantService.get_active_count(db, session_id)
+        items = [SessionParticipantItem(**p) for p in participants]
+        return SessionParticipantsResponse(
+            participants=items,
+            total=len(items),
+            active_count=active_count,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("list_session_participants_error", session_id=session_id, error=str(e), exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 

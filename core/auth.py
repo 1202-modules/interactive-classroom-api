@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from core.config import settings
 from core.db import get_db
 from repositories.user_repository import UserRepository
+from repositories.guest_email_verification_repository import GuestEmailVerificationRepository
 
 security = HTTPBearer()
 
@@ -37,6 +38,31 @@ def verify_token(token: str) -> Optional[dict]:
         return payload
     except JWTError:
         return None
+
+
+def create_guest_access_token(email: str, expires_delta: Optional[timedelta] = None) -> str:
+    """Create JWT for session guest (email-code flow). Payload: sub=email, type=session_guest."""
+    if expires_delta is None:
+        expires_delta = timedelta(hours=settings.GUEST_TOKEN_EXPIRE_HOURS)
+    to_encode = {
+        "sub": email,
+        "type": "session_guest",
+        "exp": datetime.now(timezone.utc) + expires_delta,
+    }
+    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+
+def create_participant_token(participant_id: int, session_id: int, expires_delta: Optional[timedelta] = None) -> str:
+    """Create JWT for anonymous session participant. Payload: sub=participant_id, session_id, type=session_participant."""
+    if expires_delta is None:
+        expires_delta = timedelta(hours=settings.GUEST_TOKEN_EXPIRE_HOURS)
+    to_encode = {
+        "sub": str(participant_id),
+        "session_id": session_id,
+        "type": "session_participant",
+        "exp": datetime.now(timezone.utc) + expires_delta,
+    }
+    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
 def create_refresh_token(user_id: int) -> str:
@@ -127,4 +153,44 @@ async def get_current_user(
         "email": user.email,
         "first_name": user.first_name,
         "last_name": user.last_name,
+    }
+
+
+async def get_current_guest_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Dependency to get current guest from JWT (type=session_guest). Expiration via JWT exp; record exists = not revoked."""
+    token = credentials.credentials
+    payload = verify_token(token)
+    if payload is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    if payload.get("type") != "session_guest":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token type",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    email = payload.get("sub")
+    if not email or not isinstance(email, str):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    verification = GuestEmailVerificationRepository.get_by_email(db, email)
+    if not verification:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Guest verification not found or revoked",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return {
+        "email": verification.email,
+        "display_name": verification.display_name,
+        "type": "guest",
     }

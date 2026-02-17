@@ -42,7 +42,14 @@ class Settings(BaseSettings):
     # Verification code settings
     VERIFICATION_CODE_EXPIRE_MINUTES: int = 15
     VERIFICATION_CODE_LENGTH: int = 6
-    
+
+    # Guest (email-code session) token TTL
+    GUEST_TOKEN_EXPIRE_HOURS: int = 24
+
+    # Anonymous participant display
+    ANONYMOUS_SLUG_PREFIX: str = "anon_"
+    ANONYMOUS_DISPLAY_NAME_PREFIX: str = "Guest_"
+
     class Config:
         env_file = ".env"
         case_sensitive = True

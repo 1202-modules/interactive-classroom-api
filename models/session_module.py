@@ -22,6 +22,18 @@ class SessionModule(Base):
     
     # Relationships
     session = relationship("Session", back_populates="session_modules", foreign_keys=[session_id])
+    question_messages = relationship(
+        "SessionQuestionMessage",
+        back_populates="session_module",
+        foreign_keys="SessionQuestionMessage.session_module_id",
+        cascade="all, delete-orphan",
+    )
+    timer_state = relationship(
+        "SessionModuleTimerState",
+        back_populates="session_module",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
     
     __table_args__ = (
         Index('ix_session_modules_session_id', 'session_id'),

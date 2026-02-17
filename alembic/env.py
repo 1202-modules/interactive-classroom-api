@@ -16,6 +16,12 @@ from models.workspace import Workspace
 from models.session import Session
 from models.refresh_token import RefreshToken
 from models.pending_registration import PendingRegistration
+from models.guest_email_verification import GuestEmailVerification
+from models.session_pending_email_code import SessionPendingEmailCode
+from models.organization import Organization
+from models.session_participant import SessionParticipant
+from models.session_question_message import SessionQuestionMessage, SessionQuestionMessageLike
+from models.session_module_timer_state import SessionModuleTimerState
 from core.config import settings
 
 # this is the Alembic Config object, which provides

@@ -14,6 +14,14 @@ class SessionRepository:
         return db.query(SessionModel).filter(
             SessionModel.id == session_id
         ).first()
+
+    @staticmethod
+    def get_by_passcode(db: Session, passcode: str) -> Optional[SessionModel]:
+        """Get non-deleted session by passcode (for guest join by link)."""
+        return db.query(SessionModel).filter(
+            SessionModel.passcode == passcode,
+            SessionModel.is_deleted == False
+        ).first()
     
     @staticmethod
     def get_by_workspace_id(
