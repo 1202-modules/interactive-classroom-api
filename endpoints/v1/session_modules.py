@@ -14,6 +14,7 @@ from endpoints.v1.schemas import (
     SessionModuleUpdateRequest,
     MessageResponse,
     SessionQuestionLecturerPatchRequest,
+    SessionQuestionMessagesResponse,
     SessionTimerPauseRequest,
 )
 from utils.query_params import parse_fields, filter_model_response, filter_list_response
@@ -526,6 +527,38 @@ async def activate_session_module(
         )
 
 
+@router.get(
+    "/{module_id}/questions/messages",
+    response_model=SessionQuestionMessagesResponse,
+    summary="Lecturer: list question messages",
+    description="List messages for Questions module with real author. Lecturer only.",
+    responses={
+        200: {"description": "Messages list"},
+        401: {"description": "Not authenticated"},
+        404: {"description": "Session or module not found"},
+    },
+)
+async def list_question_messages_lecturer(
+    session_id: int,
+    module_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+    limit: int = Query(100, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+):
+    """Lecturer: list messages with real author (no anonymous masking)."""
+    try:
+        result = SessionQuestionsService.list_messages_lecturer(
+            db, session_id, current_user["user_id"], module_id, limit=limit, offset=offset
+        )
+        return SessionQuestionMessagesResponse(**result)
+    except ValueError as e:
+        msg = str(e).lower()
+        if "not found" in msg or "not authorized" in msg:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
 @router.patch(
     "/{module_id}/questions/{msg_id}",
     summary="Lecturer: patch question message",
@@ -544,13 +577,14 @@ async def patch_question_message(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
-    """Lecturer: set is_answered or delete question message."""
+    """Lecturer: set is_answered, delete, or pin/unpin question message."""
     try:
         delete = body.delete or False
         is_answered = body.is_answered if not delete else None
         result = SessionQuestionsService.lecturer_patch_message(
             db, session_id, current_user["user_id"], module_id, msg_id,
             is_answered=is_answered, delete=delete,
+            pin=body.pin or False, unpin=body.unpin or False,
         )
         return result
     except ValueError as e:
@@ -647,6 +681,30 @@ async def timer_reset(
     """Lecturer: reset timer."""
     try:
         return SessionTimerService.reset(db, session_id, current_user["user_id"], module_id)
+    except ValueError as e:
+        msg = str(e).lower()
+        if "not found" in msg or "not authorized" in msg:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.post(
+    "/{module_id}/timer/set",
+    summary="Lecturer: set timer value",
+    description="Set timer to paused state with given remaining_seconds (manual value).",
+)
+async def timer_set(
+    session_id: int,
+    module_id: int,
+    body: SessionTimerPauseRequest,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Lecturer: set remaining seconds manually."""
+    try:
+        return SessionTimerService.set_remaining(
+            db, session_id, current_user["user_id"], module_id, body.remaining_seconds
+        )
     except ValueError as e:
         msg = str(e).lower()
         if "not found" in msg or "not authorized" in msg:

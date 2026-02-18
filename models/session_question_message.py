@@ -23,6 +23,7 @@ class SessionQuestionMessage(Base):
     is_anonymous = Column(Boolean, default=False, nullable=False)
     likes_count = Column(Integer, default=0, nullable=False)
     is_answered = Column(Boolean, default=False, nullable=False)
+    pinned_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
     is_deleted = Column(Boolean, default=False, nullable=False, index=True)

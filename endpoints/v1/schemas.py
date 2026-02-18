@@ -638,7 +638,13 @@ class SessionParticipantItem(BaseModel):
     display_name: Optional[str] = None
     participant_type: str
     is_active: bool
+    is_banned: bool = False
     created_at: Optional[str] = Field(None, description="When the participant joined (ISO datetime)")
+
+
+class SessionParticipantPatchRequest(BaseModel):
+    """Patch participant (lecturer)."""
+    is_banned: Optional[bool] = Field(None, description="Ban participant for this session")
 
 
 class SessionParticipantsResponse(BaseModel):
@@ -693,6 +699,8 @@ class SessionQuestionLecturerPatchRequest(BaseModel):
     """Lecturer patch for message."""
     is_answered: Optional[bool] = Field(None, description="Mark as answered")
     delete: Optional[bool] = Field(None, description="Soft delete message")
+    pin: Optional[bool] = Field(None, description="Pin message to top")
+    unpin: Optional[bool] = Field(None, description="Unpin message")
 
 
 # Timer module

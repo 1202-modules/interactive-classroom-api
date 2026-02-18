@@ -84,3 +84,16 @@ class SessionModuleTimerStateRepository:
         state.remaining_seconds = None
         state.updated_at = now
         return state
+
+    @staticmethod
+    def set_paused_with_remaining(
+        db: DBSession, session_module_id: int, remaining_seconds: int
+    ) -> SessionModuleTimerState:
+        """Set state to paused with given remaining_seconds (no commit). Creates state if missing."""
+        state = SessionModuleTimerStateRepository.get_or_create(db, session_module_id)
+        now = datetime.now(timezone.utc)
+        state.remaining_seconds = max(0, remaining_seconds)
+        state.end_at = None
+        state.is_paused = True
+        state.updated_at = now
+        return state

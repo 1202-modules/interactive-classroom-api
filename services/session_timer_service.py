@@ -137,3 +137,25 @@ class SessionTimerService:
             db.commit()
             db.refresh(state)
         return resp
+
+    @staticmethod
+    def set_remaining(
+        db: DBSession,
+        session_id: int,
+        user_id: int,
+        module_id: int,
+        remaining_seconds: int,
+    ) -> Dict[str, Any]:
+        """Lecturer: set timer to paused with given remaining_seconds. Commits."""
+        SessionTimerService._check_lecturer_access(db, session_id, user_id)
+        SessionTimerService._validate_timer_module(db, module_id, session_id)
+        if remaining_seconds < 0:
+            remaining_seconds = 0
+        state = SessionModuleTimerStateRepository.set_paused_with_remaining(
+            db, module_id, remaining_seconds
+        )
+        module = SessionModuleRepository.get_by_id(db, module_id)
+        opts = _get_timer_options(module) if module else {}
+        db.commit()
+        db.refresh(state)
+        return _format_timer_response(state, opts)

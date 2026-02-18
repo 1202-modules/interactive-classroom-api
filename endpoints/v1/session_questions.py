@@ -98,6 +98,8 @@ async def create_question_message(
         msg = str(e).lower()
         if "not found" in msg:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        if "banned" in msg:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 

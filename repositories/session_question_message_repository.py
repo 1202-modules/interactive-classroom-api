@@ -1,4 +1,5 @@
 """SessionQuestionMessage repository."""
+from datetime import datetime, timezone
 from typing import List, Optional
 
 from sqlalchemy.orm import Session as DBSession, joinedload
@@ -35,6 +36,7 @@ class SessionQuestionMessageRepository:
             SessionQuestionMessage.is_deleted == False,
             SessionQuestionMessage.parent_id == None,
         ).order_by(
+            desc(SessionQuestionMessage.pinned_at).nulls_last(),
             desc(SessionQuestionMessage.likes_count),
             SessionQuestionMessage.created_at,
         ).limit(limit).offset(offset).all()
@@ -116,9 +118,18 @@ class SessionQuestionMessageRepository:
         return msg
 
     @staticmethod
+    def update_pinned_at(
+        db: DBSession, message_id: int, pinned_at: Optional[datetime]
+    ) -> Optional[SessionQuestionMessage]:
+        """Update pinned_at (no commit). pinned_at=None to unpin."""
+        msg = SessionQuestionMessageRepository.get_by_id(db, message_id)
+        if msg:
+            msg.pinned_at = pinned_at
+        return msg
+
+    @staticmethod
     def soft_delete(db: DBSession, message_id: int) -> Optional[SessionQuestionMessage]:
         """Soft delete message (no commit)."""
-        from datetime import datetime, timezone
         msg = SessionQuestionMessageRepository.get_by_id(db, message_id)
         if msg:
             msg.is_deleted = True

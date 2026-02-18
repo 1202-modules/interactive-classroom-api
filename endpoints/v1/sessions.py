@@ -1,5 +1,5 @@
 """Session endpoints."""
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Body, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import Optional
 from core.db import get_db
@@ -15,6 +15,7 @@ from endpoints.v1.schemas import (
     MessageResponse, PasscodeResponse,
     SessionParticipantItem,
     SessionParticipantsResponse,
+    SessionParticipantPatchRequest,
 )
 from utils.query_params import parse_fields, filter_model_response, filter_list_response
 import structlog
@@ -278,6 +279,38 @@ async def list_session_participants(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error",
         )
+
+
+@router.patch(
+    "/sessions/{session_id}/participants/{participant_id}",
+    status_code=status.HTTP_200_OK,
+    summary="Patch participant (lecturer)",
+    description="Ban or unban participant for this session. Lecturer only.",
+    responses={
+        200: {"description": "Participant updated"},
+        401: {"description": "Not authenticated"},
+        404: {"description": "Session or participant not found"},
+    },
+)
+async def patch_session_participant(
+    session_id: int,
+    participant_id: int,
+    body: SessionParticipantPatchRequest = Body(...),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Ban/unban participant. Lecturer only."""
+    if body.is_banned is None:
+        return
+    try:
+        SessionParticipantService.set_banned(
+            db, session_id, participant_id, current_user["user_id"], body.is_banned
+        )
+    except ValueError as e:
+        msg = str(e).lower()
+        if "not found" in msg or "not authorized" in msg:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 @router.post(

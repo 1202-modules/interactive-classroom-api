@@ -96,3 +96,21 @@ class SessionParticipantRepository:
         if p:
             p.last_heartbeat_at = datetime.now(timezone.utc)
         return p
+
+    @staticmethod
+    def update_banned(db: DBSession, participant_id: int, is_banned: bool) -> Optional[SessionParticipant]:
+        """Update is_banned for participant (no commit)."""
+        p = SessionParticipantRepository.get_by_id(db, participant_id)
+        if p:
+            p.is_banned = is_banned
+        return p
+
+    @staticmethod
+    def update_banned(
+        db: DBSession, participant_id: int, is_banned: bool
+    ) -> Optional[SessionParticipant]:
+        """Update is_banned for participant (no commit)."""
+        p = SessionParticipantRepository.get_by_id(db, participant_id)
+        if p:
+            p.is_banned = is_banned
+        return p

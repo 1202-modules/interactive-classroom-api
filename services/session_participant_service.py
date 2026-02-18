@@ -114,6 +114,7 @@ class SessionParticipantService:
                 "display_name": p.display_name,
                 "participant_type": p.participant_type,
                 "is_active": is_active,
+                "is_banned": p.is_banned,
                 "created_at": p.created_at.isoformat() if p.created_at else None,
             })
         return result
@@ -122,3 +123,20 @@ class SessionParticipantService:
     def get_active_count(db: DBSession, session_id: int) -> int:
         """Count active participants (heartbeat within threshold)."""
         return SessionParticipantRepository.count_active(db, session_id)
+
+    @staticmethod
+    def set_banned(
+        db: DBSession, session_id: int, participant_id: int, user_id: int, is_banned: bool
+    ) -> None:
+        """Set is_banned for participant. Lecturer (workspace owner) only. Commits."""
+        session = SessionRepository.get_by_id(db, session_id)
+        if not session:
+            raise ValueError("Session not found")
+        workspace = WorkspaceRepository.get_by_id(db, session.workspace_id)
+        if not workspace or workspace.user_id != user_id:
+            raise ValueError("Not authorized")
+        participant = SessionParticipantRepository.get_by_id(db, participant_id)
+        if not participant or participant.session_id != session_id:
+            raise ValueError("Participant not found")
+        SessionParticipantRepository.update_banned(db, participant_id, is_banned)
+        db.commit()

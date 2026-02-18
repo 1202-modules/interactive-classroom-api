@@ -9,6 +9,7 @@ from repositories.session_module_repository import SessionModuleRepository
 from repositories.session_repository import SessionRepository
 from repositories.workspace_repository import WorkspaceRepository
 from repositories.session_question_message_repository import SessionQuestionMessageRepository
+from repositories.session_participant_repository import SessionParticipantRepository
 from utils.module_settings import get_questions_settings, get_questions_max_length
 import structlog
 
@@ -91,6 +92,51 @@ class SessionQuestionsService:
         }
 
     @staticmethod
+    def list_messages_lecturer(
+        db: DBSession,
+        session_id: int,
+        user_id: int,
+        module_id: int,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> Dict[str, Any]:
+        """List messages for Questions module. Lecturer only; always shows real author."""
+        session = SessionRepository.get_by_id(db, session_id)
+        if not session:
+            raise ValueError("Session not found")
+        workspace = WorkspaceRepository.get_by_id(db, session.workspace_id)
+        if not workspace or workspace.user_id != user_id:
+            raise ValueError("Not authorized")
+        module = SessionQuestionsService._validate_questions_module(db, module_id, session_id)
+        opts = get_questions_settings(module.settings)
+
+        messages = SessionQuestionMessageRepository.list_by_module(
+            db, module_id, limit=limit, offset=offset
+        )
+        result = []
+        for msg in messages:
+            child_msgs = SessionQuestionMessageRepository.get_children(db, msg.id)
+            result.append(
+                _serialize_message(
+                    msg,
+                    children=[
+                        _serialize_message(c, allow_anonymous=False) for c in child_msgs
+                    ],
+                    allow_anonymous=False,
+                )
+            )
+        return {
+            "messages": result,
+            "settings": {
+                "likes_enabled": opts["likes_enabled"],
+                "allow_anonymous": opts.get("allow_anonymous", False),
+                "allow_participant_answers": opts["allow_participant_answers"],
+                "length_limit_mode": opts["length_limit_mode"],
+                "max_length": get_questions_max_length(opts),
+            },
+        }
+
+    @staticmethod
     def create_message(
         db: DBSession,
         passcode: str,
@@ -106,6 +152,10 @@ class SessionQuestionsService:
             raise ValueError("Session not found")
         module = SessionQuestionsService._validate_questions_module(db, module_id, session.id)
         opts = get_questions_settings(module.settings)
+
+        participant = SessionParticipantRepository.get_by_id(db, participant_id)
+        if not participant or participant.is_banned:
+            raise ValueError("You are banned from this session")
 
         content = (content or "").strip()
         if not content:
@@ -182,8 +232,10 @@ class SessionQuestionsService:
         message_id: int,
         is_answered: Optional[bool] = None,
         delete: bool = False,
+        pin: bool = False,
+        unpin: bool = False,
     ) -> Dict[str, Any]:
-        """Lecturer: set is_answered or soft delete. Commits."""
+        """Lecturer: set is_answered, soft delete, or pin/unpin. Commits."""
         session = SessionRepository.get_by_id(db, session_id)
         if not session:
             raise ValueError("Session not found")
@@ -201,6 +253,13 @@ class SessionQuestionsService:
             SessionQuestionMessageRepository.soft_delete(db, message_id)
             db.commit()
             return {"deleted": True}
+
+        if pin:
+            SessionQuestionMessageRepository.update_pinned_at(
+                db, message_id, datetime.now(timezone.utc)
+            )
+        if unpin:
+            SessionQuestionMessageRepository.update_pinned_at(db, message_id, None)
 
         if is_answered is not None:
             SessionQuestionMessageRepository.update_is_answered(db, message_id, is_answered)
