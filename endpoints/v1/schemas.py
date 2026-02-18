@@ -71,6 +71,10 @@ class LoginRequest(BaseModel):
     """Schema for user login."""
     email: EmailStr = Field(..., description="User email address", example="user@example.com")
     password: str = Field(..., description="User password", example="SecurePass123")
+    remember_me: bool = Field(
+        default=True,
+        description="If True, keep logged in for 7 days (cookie). If False, session ends when browser closes."
+    )
 
     class Config:
         json_schema_extra = {

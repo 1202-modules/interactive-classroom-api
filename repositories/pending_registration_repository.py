@@ -1,6 +1,7 @@
 """PendingRegistration repository for database operations."""
 from datetime import datetime, timezone
 from typing import Optional, List
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from models.pending_registration import PendingRegistration
 
@@ -53,7 +54,7 @@ class PendingRegistrationRepository:
             PendingRegistration instance or None
         """
         return db.query(PendingRegistration).filter(
-            PendingRegistration.email == email
+            func.lower(PendingRegistration.email) == func.lower(email)
         ).first()
     
     @staticmethod
@@ -74,7 +75,7 @@ class PendingRegistrationRepository:
             PendingRegistration instance or None
         """
         return db.query(PendingRegistration).filter(
-            PendingRegistration.email == email,
+            func.lower(PendingRegistration.email) == func.lower(email),
             PendingRegistration.verification_code == code
         ).first()
     

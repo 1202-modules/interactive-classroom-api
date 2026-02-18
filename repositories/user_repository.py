@@ -1,6 +1,7 @@
 """User repository."""
 from typing import List, Optional
 from datetime import datetime, timedelta, timezone
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from models.user import User
 from core.config import settings
@@ -18,9 +19,9 @@ class UserRepository:
     
     @staticmethod
     def get_by_email(db: Session, email: str) -> Optional[User]:
-        """Get user by email."""
+        """Get user by email (case-insensitive)."""
         return db.query(User).filter(
-            User.email == email,
+            func.lower(User.email) == func.lower(email),
             User.is_deleted == False
         ).first()
     

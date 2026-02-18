@@ -246,14 +246,16 @@ async def login(
         )
         
         # Set refresh token in HTTP-only cookie
-        response.set_cookie(
-            key=settings.COOKIE_NAME,
-            value=refresh_token,
-            max_age=settings.COOKIE_MAX_AGE,
-            httponly=settings.COOKIE_HTTP_ONLY,
-            secure=settings.COOKIE_SECURE,
-            samesite=settings.COOKIE_SAME_SITE
-        )
+        cookie_kwargs = {
+            "key": settings.COOKIE_NAME,
+            "value": refresh_token,
+            "httponly": settings.COOKIE_HTTP_ONLY,
+            "secure": settings.COOKIE_SECURE,
+            "samesite": settings.COOKIE_SAME_SITE,
+        }
+        if login_data.remember_me:
+            cookie_kwargs["max_age"] = settings.COOKIE_MAX_AGE
+        response.set_cookie(**cookie_kwargs)
         
         return LoginResponse(**result)
     except ValueError as e:

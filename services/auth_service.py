@@ -65,14 +65,19 @@ class AuthService:
         
         # Send verification email
         email_sent = send_verification_email(email, verification_code)
-        
+        if not email_sent:
+            raise ValueError(
+                "Could not send verification email. This email address may be unavailable "
+                "or the domain does not accept mail."
+            )
+
         logger.info(
             "pending_registration_created",
             pending_reg_id=pending_reg.id,
             email=email,
             email_sent=email_sent
         )
-        
+
         result = {"email": email, "verification_code_sent": email_sent}
         if not all([settings.SMTP_HOST, settings.SMTP_USER, settings.SMTP_PASSWORD, settings.SMTP_FROM_EMAIL]):
             result["code"] = verification_code
@@ -250,9 +255,14 @@ class AuthService:
         
         # Send verification email
         email_sent = send_verification_email(email, verification_code)
-        
+        if not email_sent:
+            raise ValueError(
+                "Could not send verification email. This email address may be unavailable "
+                "or the domain does not accept mail."
+            )
+
         logger.info("verification_code_resent", pending_reg_id=pending_reg.id, email=email, email_sent=email_sent)
-        
+
         result = {"verification_code_sent": email_sent}
         if not all([settings.SMTP_HOST, settings.SMTP_USER, settings.SMTP_PASSWORD, settings.SMTP_FROM_EMAIL]):
             result["code"] = verification_code
