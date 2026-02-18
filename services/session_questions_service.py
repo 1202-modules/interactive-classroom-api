@@ -15,9 +15,16 @@ import structlog
 logger = structlog.get_logger(__name__)
 
 
-def _serialize_message(msg, children: Optional[List[Dict]] = None) -> Dict[str, Any]:
-    """Serialize message for API response."""
+def _serialize_message(
+    msg,
+    children: Optional[List[Dict]] = None,
+    *,
+    allow_anonymous: bool = False,
+) -> Dict[str, Any]:
+    """Serialize message for API response. When allow_anonymous and msg.is_anonymous, hide author to participants."""
     author = msg.participant.display_name if msg.participant else None
+    if allow_anonymous and getattr(msg, "is_anonymous", False):
+        author = "Anonymous"
     return {
         "id": msg.id,
         "session_module_id": msg.session_module_id,
@@ -63,17 +70,20 @@ class SessionQuestionsService:
         opts = get_questions_settings(module.settings)
 
         messages = SessionQuestionMessageRepository.list_by_module(db, module_id, limit=limit, offset=offset)
+        allow_anonymous = opts.get("allow_anonymous", False)
         result = []
         for msg in messages:
-            children = SessionQuestionMessageRepository.get_children(db, msg.id)
+            child_msgs = SessionQuestionMessageRepository.get_children(db, msg.id)
             result.append(_serialize_message(
                 msg,
-                children=[_serialize_message(c) for c in children],
+                children=[_serialize_message(c, allow_anonymous=allow_anonymous) for c in child_msgs],
+                allow_anonymous=allow_anonymous,
             ))
         return {
             "messages": result,
             "settings": {
                 "likes_enabled": opts["likes_enabled"],
+                "allow_anonymous": opts.get("allow_anonymous", False),
                 "allow_participant_answers": opts["allow_participant_answers"],
                 "length_limit_mode": opts["length_limit_mode"],
                 "max_length": get_questions_max_length(opts),
@@ -88,6 +98,7 @@ class SessionQuestionsService:
         participant_id: int,
         content: str,
         parent_id: Optional[int] = None,
+        is_anonymous: bool = False,
     ) -> Dict[str, Any]:
         """Create message. Commits."""
         session = SessionRepository.get_by_passcode(db, passcode)
@@ -112,6 +123,9 @@ class SessionQuestionsService:
             if count >= opts["max_questions_total"]:
                 raise ValueError("Maximum number of questions reached")
 
+        if is_anonymous and not opts.get("allow_anonymous", False):
+            raise ValueError("Anonymous questions are disabled for this module")
+
         if opts["cooldown_enabled"] and opts["cooldown_seconds"] > 0:
             last = SessionQuestionMessageRepository.get_last_by_participant_in_module(
                 db, module_id, participant_id
@@ -123,7 +137,8 @@ class SessionQuestionsService:
                     raise ValueError(f"Please wait {wait} seconds before posting again")
 
         msg = SessionQuestionMessageRepository.create(
-            db, module_id, participant_id, content, parent_id
+            db, module_id, participant_id, content, parent_id,
+            is_anonymous=is_anonymous if parent_id is None else False,
         )
         db.commit()
         db.refresh(msg)

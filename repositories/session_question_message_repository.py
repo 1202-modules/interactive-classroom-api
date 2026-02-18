@@ -76,13 +76,15 @@ class SessionQuestionMessageRepository:
         participant_id: int,
         content: str,
         parent_id: Optional[int] = None,
+        is_anonymous: bool = False,
     ) -> SessionQuestionMessage:
-        """Create message (no commit)."""
+        """Create message (no commit). is_anonymous only applies to top-level questions (parent_id is None)."""
         msg = SessionQuestionMessage(
             session_module_id=session_module_id,
             participant_id=participant_id,
             content=content,
             parent_id=parent_id,
+            is_anonymous=is_anonymous if parent_id is None else False,
         )
         db.add(msg)
         return msg

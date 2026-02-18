@@ -75,14 +75,18 @@ class SessionModuleRepository:
         
         # Use provided name or workspace module name
         module_name = name or workspace_module.name
-        
-        # Create session module with workspace module data (clone, no reference to workspace module)
+
+        # Merge workspace_module_id into settings for used_in_sessions counting
+        settings = dict(workspace_module.settings) if workspace_module.settings else {}
+        settings['workspace_module_id'] = workspace_module_id
+
+        # Create session module with workspace module data (clone)
         return SessionModuleRepository.create(
             db=db,
             session_id=session_id,
             name=module_name,
             module_type=workspace_module.module_type,
-            settings=workspace_module.settings.copy() if workspace_module.settings else None
+            settings=settings
         )
     
     @staticmethod
@@ -186,6 +190,33 @@ class SessionModuleRepository:
         module.deleted_at = None
         return module
     
+    @staticmethod
+    def count_by_workspace_module_id(
+        db: Session,
+        workspace_id: int,
+        workspace_module_id: int,
+    ) -> int:
+        """Count session modules (non-deleted) that were created from this workspace module."""
+        sessions = db.query(SessionModel.id).filter(
+            SessionModel.workspace_id == workspace_id,
+            SessionModel.is_deleted == False,
+        ).all()
+        session_ids = [s.id for s in sessions]
+        if not session_ids:
+            return 0
+        modules = (
+            db.query(SessionModule)
+            .filter(
+                SessionModule.session_id.in_(session_ids),
+                SessionModule.is_deleted == False,
+            )
+            .all()
+        )
+        return sum(
+            1 for m in modules
+            if m.settings and m.settings.get('workspace_module_id') == workspace_module_id
+        )
+
     @staticmethod
     def delete(db: Session, module_id: int, hard: bool = False) -> Optional[SessionModule]:
         """Delete a session module (without commit)."""

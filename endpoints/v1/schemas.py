@@ -646,6 +646,7 @@ class SessionQuestionMessageCreateRequest(BaseModel):
     """Create question message."""
     content: str = Field(..., min_length=1, description="Message content")
     parent_id: Optional[int] = Field(None, description="Parent message ID for replies")
+    is_anonymous: bool = Field(False, description="Submit as anonymous (only for top-level questions, requires allow_anonymous)")
 
 
 class SessionQuestionMessageItem(BaseModel):
@@ -665,9 +666,10 @@ class SessionQuestionMessageItem(BaseModel):
 class SessionQuestionModuleSettings(BaseModel):
     """Questions module settings (subset for client)."""
     likes_enabled: bool = True
+    allow_anonymous: bool = False
     allow_participant_answers: bool = True
     length_limit_mode: str = "moderate"
-    max_length: int = 500
+    max_length: int = 250
 
 
 class SessionQuestionMessagesResponse(BaseModel):

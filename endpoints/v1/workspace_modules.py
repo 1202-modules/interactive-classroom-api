@@ -73,14 +73,24 @@ async def list_workspace_modules(
                 detail="Workspace not found"
             )
         
+        from repositories.session_module_repository import SessionModuleRepository
+
         modules = WorkspaceModuleRepository.get_by_workspace_id(
             db=db,
             workspace_id=workspace_id,
             include_deleted=True
         )
-        
-        # Convert to response models
-        module_responses = [WorkspaceModuleResponse.model_validate(m) for m in modules]
+
+        # Enrich each module's settings with used_in_sessions count
+        module_responses = []
+        for m in modules:
+            res = WorkspaceModuleResponse.model_validate(m)
+            settings = dict(res.settings) if res.settings else {}
+            settings['used_in_sessions'] = SessionModuleRepository.count_by_workspace_module_id(
+                db, workspace_id, m.id
+            )
+            res.settings = settings
+            module_responses.append(res)
         
         # When fields specified: return only requested keys (no defaults for missing fields)
         fields_set = parse_fields(fields)

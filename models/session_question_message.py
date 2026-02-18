@@ -20,6 +20,7 @@ class SessionQuestionMessage(Base):
         Integer, ForeignKey("session_question_messages.id", ondelete="CASCADE"), nullable=True, index=True
     )
     content = Column(Text, nullable=False)
+    is_anonymous = Column(Boolean, default=False, nullable=False)
     likes_count = Column(Integer, default=0, nullable=False)
     is_answered = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)

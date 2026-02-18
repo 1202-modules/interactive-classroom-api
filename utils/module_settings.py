@@ -77,9 +77,9 @@ def validate_poll_settings(settings: Dict[str, Any]) -> None:
 # Questions: length limit modes and character limits
 QUESTIONS_LENGTH_LIMIT_MODES = ("compact", "moderate", "extended")
 QUESTIONS_LENGTH_LIMITS: Dict[str, int] = {
-    "compact": 200,
-    "moderate": 500,
-    "extended": 2000,
+    "compact": 100,
+    "moderate": 250,
+    "extended": 500,
 }
 
 
@@ -94,6 +94,10 @@ class QuestionsModuleSettings(BaseModel):
         description="Character limit mode",
     )
     likes_enabled: bool = Field(default=True, description="Allow participants to like questions")
+    allow_anonymous: bool = Field(
+        default=False,
+        description="Allow participants to submit questions semi-anonymously (lecturer still sees author in Inspect)",
+    )
     cooldown_enabled: bool = Field(default=False, description="Cooldown between participant questions")
     cooldown_seconds: int = Field(default=30, ge=0, description="Cooldown duration in seconds")
     allow_participant_answers: bool = Field(default=True, description="Allow lecturer to enable participant answers")

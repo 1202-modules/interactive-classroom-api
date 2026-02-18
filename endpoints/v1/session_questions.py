@@ -91,7 +91,7 @@ async def create_question_message(
     participant_id = _get_participant_id(passcode, db, credentials)
     try:
         result = SessionQuestionsService.create_message(
-            db, passcode, module_id, participant_id, body.content, body.parent_id
+            db, passcode, module_id, participant_id, body.content, body.parent_id, body.is_anonymous
         )
         return result
     except ValueError as e:
