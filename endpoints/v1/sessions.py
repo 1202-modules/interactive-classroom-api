@@ -106,10 +106,8 @@ async def list_sessions(
             merged_settings = SessionRepository.get_merged_settings(s, workspace.template_settings or {})
             session_dict = SessionResponse.model_validate(s).model_dump()
             session_dict['settings'] = merged_settings
-            if s.is_stopped:
-                session_dict['participant_count'] = s.stopped_participant_count
-            else:
-                session_dict['participant_count'] = SessionParticipantRepository.count_active(db, s.id)
+            # Always show total participant count (all participants, not just active)
+            session_dict['participant_count'] = SessionParticipantRepository.count_all(db, s.id)
             session_responses.append(SessionResponse(**session_dict))
         
         # When fields specified: return only requested keys (no defaults for missing fields)

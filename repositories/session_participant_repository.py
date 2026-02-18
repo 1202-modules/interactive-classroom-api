@@ -58,6 +58,14 @@ class SessionParticipantRepository:
         ).count()
 
     @staticmethod
+    def count_all(db: DBSession, session_id: int) -> int:
+        """Count all participants for a session (not deleted)."""
+        return db.query(SessionParticipant).filter(
+            SessionParticipant.session_id == session_id,
+            SessionParticipant.is_deleted == False
+        ).count()
+
+    @staticmethod
     def create(
         db: DBSession,
         session_id: int,

@@ -21,6 +21,30 @@ logger = structlog.get_logger(__name__)
 router = APIRouter(tags=["Workspaces"])
 
 
+def _workspace_response_with_counts(db: Session, workspace) -> WorkspaceResponse:
+    """Build WorkspaceResponse with computed participant_count, session_count, has_live_session."""
+    sessions = SessionRepository.get_by_workspace_id(
+        db=db,
+        workspace_id=workspace.id,
+        include_deleted=False
+    )
+    participant_count = 0
+    for session in sessions:
+        participant_count += SessionParticipantRepository.count_all(db, session.id)
+    active_sessions = [s for s in sessions if s.status == 'active']
+    session_count = len(active_sessions)
+    live_sessions = [
+        s for s in active_sessions
+        if not s.is_stopped and s.start_datetime is not None
+    ]
+    has_live_session = len(live_sessions) > 0
+    resp = WorkspaceResponse.model_validate(workspace)
+    resp.participant_count = participant_count
+    resp.session_count = session_count
+    resp.has_live_session = has_live_session
+    return resp
+
+
 @router.get(
     "",
     summary="List workspaces",
@@ -76,35 +100,7 @@ async def list_workspaces(
         # Calculate participant_count and has_live_session for each workspace
         workspace_responses = []
         for workspace in workspaces:
-            # Get all non-deleted sessions in workspace
-            sessions = SessionRepository.get_by_workspace_id(
-                db=db,
-                workspace_id=workspace.id,
-                include_deleted=False
-            )
-            
-            # Calculate participant_count: sum(stopped_participant_count) + active participants in live sessions
-            participant_count = sum(
-                session.stopped_participant_count
-                for session in sessions
-                if session.is_stopped
-            )
-            live_sessions = [
-                s for s in sessions
-                if not s.is_stopped and s.start_datetime is not None
-            ]
-            for live_session in live_sessions:
-                participant_count += SessionParticipantRepository.count_active(db, live_session.id)
-
-            # Count live (active) sessions
-            session_count = len(live_sessions)
-            has_live_session = session_count > 0
-
-            workspace_response = WorkspaceResponse.model_validate(workspace)
-            workspace_response.participant_count = participant_count
-            workspace_response.session_count = session_count
-            workspace_response.has_live_session = has_live_session
-            workspace_responses.append(workspace_response)
+            workspace_responses.append(_workspace_response_with_counts(db, workspace))
         
         # When fields specified: return only requested keys (no defaults for missing fields)
         fields_set = parse_fields(fields)
@@ -185,34 +181,7 @@ async def get_workspace(
                 detail="Workspace not found"
             )
         
-        # Get all non-deleted sessions in workspace
-        sessions = SessionRepository.get_by_workspace_id(
-            db=db,
-            workspace_id=workspace_id,
-            include_deleted=False
-        )
-        
-        # Calculate participant_count: sum(stopped_participant_count) + active participants in live sessions
-        participant_count = sum(
-            session.stopped_participant_count
-            for session in sessions
-            if session.is_stopped
-        )
-        live_sessions = [
-            s for s in sessions
-            if not s.is_stopped and s.start_datetime is not None
-        ]
-        for live_session in live_sessions:
-            participant_count += SessionParticipantRepository.count_active(db, live_session.id)
-
-        # Count live (active) sessions
-        session_count = len(live_sessions)
-        has_live_session = session_count > 0
-
-        workspace_response = WorkspaceResponse.model_validate(workspace)
-        workspace_response.participant_count = participant_count
-        workspace_response.session_count = session_count
-        workspace_response.has_live_session = has_live_session
+        workspace_response = _workspace_response_with_counts(db, workspace)
         
         # Apply fields filter if specified
         fields_set = parse_fields(fields)
@@ -283,7 +252,7 @@ async def create_workspace(
             description=workspace_data.description,
             template_settings=workspace_data.template_settings
         )
-        return WorkspaceResponse.model_validate(workspace)
+        return _workspace_response_with_counts(db, workspace)
     except HTTPException:
         raise
     except ValueError as e:
@@ -385,7 +354,7 @@ async def update_workspace(
         if not fields_set:
             return {}
         
-        workspace_response = WorkspaceResponse.model_validate(workspace)
+        workspace_response = _workspace_response_with_counts(db, workspace)
         filtered_dict = filter_model_response(workspace_response, fields_set)
         return filtered_dict
     except HTTPException:
@@ -542,7 +511,7 @@ async def archive_workspace(
         if not fields_set:
             return {}
         
-        workspace_response = WorkspaceResponse.model_validate(workspace)
+        workspace_response = _workspace_response_with_counts(db, workspace)
         filtered_dict = filter_model_response(workspace_response, fields_set)
         return filtered_dict
     except ValueError as e:
@@ -634,7 +603,7 @@ async def unarchive_workspace(
         if not fields_set:
             return {}
         
-        workspace_response = WorkspaceResponse.model_validate(workspace)
+        workspace_response = _workspace_response_with_counts(db, workspace)
         filtered_dict = filter_model_response(workspace_response, fields_set)
         return filtered_dict
     except ValueError as e:
@@ -726,7 +695,7 @@ async def restore_workspace(
         if not fields_set:
             return {}
         
-        workspace_response = WorkspaceResponse.model_validate(workspace)
+        workspace_response = _workspace_response_with_counts(db, workspace)
         filtered_dict = filter_model_response(workspace_response, fields_set)
         return filtered_dict
     except ValueError as e:
