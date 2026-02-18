@@ -66,10 +66,10 @@ class SessionModuleService:
             
             # Find next available suffix
             suffix = 1
-            while f"{base_name}-{suffix}" in existing_names:
+            while f"{base_name} ({suffix})" in existing_names:
                 suffix += 1
             
-            name = f"{base_name}-{suffix}"
+            name = f"{base_name} ({suffix})"
         
         # Copy module from workspace
         module = SessionModuleRepository.copy_from_workspace_module(
@@ -213,7 +213,32 @@ class SessionModuleService:
             logger.info("session_module_activated", module_id=module_id, session_id=session_id)
         
         return active_module
-    
+
+    @staticmethod
+    def deactivate_active_module(
+        db: Session,
+        session_id: int,
+        user_id: int
+    ) -> bool:
+        """
+        Deactivate the current active module for the session (clear active state).
+
+        Returns:
+            True if session was updated (had an active module), False otherwise.
+        """
+        session = SessionRepository.get_by_id(db, session_id)
+        if not session:
+            raise ValueError("Session not found")
+        workspace = WorkspaceRepository.get_by_id(db, session.workspace_id)
+        if not workspace or workspace.user_id != user_id:
+            raise ValueError("Session not found or access denied")
+        if not session.active_module_id:
+            return False
+        SessionModuleRepository.deactivate_all_modules(db=db, session_id=session_id)
+        db.commit()
+        logger.info("session_module_deactivated", session_id=session_id)
+        return True
+
     @staticmethod
     def delete_module(
         db: Session,

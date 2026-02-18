@@ -195,6 +195,36 @@ async def create_session_module(
         )
 
 
+@router.post(
+    "/deactivate-active",
+    summary="Deactivate active module",
+    description="Clear the currently active module for the session (move back to queue).",
+    responses={
+        200: {"description": "Active module deactivated"},
+        401: {"description": "Not authenticated"},
+        404: {"description": "Session not found"}
+    }
+)
+async def deactivate_active_module(
+    session_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Deactivate the current active module for the session."""
+    try:
+        SessionModuleService.deactivate_active_module(
+            db=db,
+            session_id=session_id,
+            user_id=current_user["user_id"]
+        )
+        return {}
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+
+
 @router.get(
     "/{module_id}",
     summary="Get session module",
