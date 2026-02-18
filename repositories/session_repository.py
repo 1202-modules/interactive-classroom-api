@@ -55,16 +55,24 @@ class SessionRepository:
         name: str,
         description: Optional[str] = None,
         template_settings: Optional[Dict[str, Any]] = None,
+        settings: Optional[Dict[str, Any]] = None,
         passcode: Optional[str] = None
     ) -> SessionModel:
         """Create a new session (without commit)."""
         from utils.passcode import generate_unique_passcode
+        from utils.settings import calculate_settings_diff
         
         
         # Generate passcode if not provided
         if passcode is None:
             passcode = generate_unique_passcode(db)
         
+        # Calculate custom_settings if settings provided
+        custom_settings = None
+        if settings is not None and template_settings is not None:
+            differences = calculate_settings_diff(template_settings, settings)
+            if differences:
+                custom_settings = differences
 
         # Session is created stopped by default
         # updated_at will be updated automatically when is_stopped changes
@@ -73,7 +81,7 @@ class SessionRepository:
             name=name,
             description=description,
             status=SessionStatus.ACTIVE.value,
-            custom_settings=None,
+            custom_settings=custom_settings,
             is_stopped=True,
             passcode=passcode
         )

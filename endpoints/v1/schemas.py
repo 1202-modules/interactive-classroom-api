@@ -316,12 +316,17 @@ class SessionCreateRequest(BaseModel):
     """Schema for creating session."""
     name: str = Field(..., min_length=1, max_length=200, description="Session name", example="Lecture 1")
     description: Optional[str] = Field(None, max_length=1000, description="Session description", example="Introduction to the course")
+    settings: Optional[Dict[str, Any]] = Field(None, description="Session settings (JSON). Will create custom_settings if different from template.", example={"default_session_duration_min": 60, "max_participants": 50})
 
     class Config:
         json_schema_extra = {
             "example": {
                 "name": "Lecture 1",
-                "description": "Introduction to the course"
+                "description": "Introduction to the course",
+                "settings": {
+                    "default_session_duration_min": 60,
+                    "max_participants": 50
+                }
             }
         }
 

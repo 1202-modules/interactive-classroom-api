@@ -380,7 +380,8 @@ async def create_session(
             workspace_id=workspace_id,
             name=session_data.name,
             description=session_data.description,
-            template_settings=workspace.template_settings
+            template_settings=workspace.template_settings,
+            settings=session_data.settings
         )
         
         db.commit()
