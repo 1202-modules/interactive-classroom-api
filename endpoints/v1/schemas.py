@@ -211,6 +211,7 @@ class WorkspaceResponse(BaseModel):
     participant_count: int = Field(default=0, description="Sum of stopped_participant_count from stopped sessions + active participants in live sessions")
     session_count: int = Field(default=0, description="Number of live (active) sessions")
     has_live_session: bool = Field(default=False, description="Whether workspace has at least one live (running) session")
+    last_session_started_at: Optional[datetime] = Field(default=None, description="Start time of the most recently started session in this workspace")
     is_deleted: bool = Field(default=False, description="Whether workspace is deleted")
     deleted_at: Optional[datetime] = Field(default=None, description="Timestamp when workspace was deleted")
     created_at: datetime
@@ -637,6 +638,7 @@ class SessionParticipantItem(BaseModel):
     display_name: Optional[str] = None
     participant_type: str
     is_active: bool
+    created_at: Optional[str] = Field(None, description="When the participant joined (ISO datetime)")
 
 
 class SessionParticipantsResponse(BaseModel):

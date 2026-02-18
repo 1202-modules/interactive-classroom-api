@@ -114,6 +114,7 @@ class SessionParticipantService:
                 "display_name": p.display_name,
                 "participant_type": p.participant_type,
                 "is_active": is_active,
+                "created_at": p.created_at.isoformat() if p.created_at else None,
             })
         return result
 

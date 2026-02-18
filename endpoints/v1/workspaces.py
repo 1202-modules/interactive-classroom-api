@@ -38,10 +38,16 @@ def _workspace_response_with_counts(db: Session, workspace) -> WorkspaceResponse
         if not s.is_stopped and s.start_datetime is not None
     ]
     has_live_session = len(live_sessions) > 0
+    last_started = None
+    for s in sessions:
+        t = s.start_datetime or s.created_at
+        if t and (last_started is None or t > last_started):
+            last_started = t
     resp = WorkspaceResponse.model_validate(workspace)
     resp.participant_count = participant_count
     resp.session_count = session_count
     resp.has_live_session = has_live_session
+    resp.last_session_started_at = last_started
     return resp
 
 
