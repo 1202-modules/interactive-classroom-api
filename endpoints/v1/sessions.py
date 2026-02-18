@@ -5,6 +5,7 @@ from typing import Optional
 from core.db import get_db
 from core.auth import get_current_user
 from repositories.session_repository import SessionRepository
+from repositories.session_participant_repository import SessionParticipantRepository
 from repositories.workspace_repository import WorkspaceRepository
 from services.session_service import SessionService
 from services.session_participant_service import SessionParticipantService
@@ -99,12 +100,16 @@ async def list_sessions(
             include_deleted=True
         )
         
-        # Get merged settings for each session
+        # Get merged settings and participant_count for each session
         session_responses = []
         for s in sessions:
             merged_settings = SessionRepository.get_merged_settings(s, workspace.template_settings or {})
             session_dict = SessionResponse.model_validate(s).model_dump()
             session_dict['settings'] = merged_settings
+            if s.is_stopped:
+                session_dict['participant_count'] = s.stopped_participant_count
+            else:
+                session_dict['participant_count'] = SessionParticipantRepository.count_active(db, s.id)
             session_responses.append(SessionResponse(**session_dict))
         
         # When fields specified: return only requested keys (no defaults for missing fields)

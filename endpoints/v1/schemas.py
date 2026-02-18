@@ -208,7 +208,8 @@ class WorkspaceResponse(BaseModel):
     description: Optional[str] = None
     status: str
     template_settings: Optional[Dict[str, Any]] = None
-    participant_count: int = Field(default=0, description="Total participant count from all stopped sessions")
+    participant_count: int = Field(default=0, description="Sum of stopped_participant_count from stopped sessions + active participants in live sessions")
+    session_count: int = Field(default=0, description="Number of live (active) sessions")
     has_live_session: bool = Field(default=False, description="Whether workspace has at least one live (running) session")
     is_deleted: bool = Field(default=False, description="Whether workspace is deleted")
     deleted_at: Optional[datetime] = Field(default=None, description="Timestamp when workspace was deleted")
@@ -288,6 +289,7 @@ class SessionResponse(BaseModel):
     workspace_id: int
     name: str
     description: Optional[str] = None
+    participant_count: int = Field(default=0, description="Current participant count: stopped_participant_count if stopped, else active participants in live session")
     stopped_participant_count: int
     start_datetime: Optional[datetime] = None
     end_datetime: Optional[datetime] = None

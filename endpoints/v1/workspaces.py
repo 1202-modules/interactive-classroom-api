@@ -6,6 +6,7 @@ from core.db import get_db
 from core.auth import get_current_user
 from repositories.workspace_repository import WorkspaceRepository
 from repositories.session_repository import SessionRepository
+from repositories.session_participant_repository import SessionParticipantRepository
 from services.workspace_service import WorkspaceService
 from endpoints.v1.schemas import (
     WorkspaceResponse, WorkspaceListResponse,
@@ -82,22 +83,26 @@ async def list_workspaces(
                 include_deleted=False
             )
             
-            # Calculate participant_count (sum of stopped_participant_count from stopped sessions)
+            # Calculate participant_count: sum(stopped_participant_count) + active participants in live sessions
             participant_count = sum(
-                session.stopped_participant_count 
-                for session in sessions 
+                session.stopped_participant_count
+                for session in sessions
                 if session.is_stopped
             )
-            
-            # Check if there's at least one live (running) session
-            # Live session = is_stopped=False AND start_datetime is not NULL
-            has_live_session = any(
-                not session.is_stopped and session.start_datetime is not None
-                for session in sessions
-            )
-            
+            live_sessions = [
+                s for s in sessions
+                if not s.is_stopped and s.start_datetime is not None
+            ]
+            for live_session in live_sessions:
+                participant_count += SessionParticipantRepository.count_active(db, live_session.id)
+
+            # Count live (active) sessions
+            session_count = len(live_sessions)
+            has_live_session = session_count > 0
+
             workspace_response = WorkspaceResponse.model_validate(workspace)
             workspace_response.participant_count = participant_count
+            workspace_response.session_count = session_count
             workspace_response.has_live_session = has_live_session
             workspace_responses.append(workspace_response)
         
@@ -187,22 +192,26 @@ async def get_workspace(
             include_deleted=False
         )
         
-        # Calculate participant_count (sum of stopped_participant_count from stopped sessions)
+        # Calculate participant_count: sum(stopped_participant_count) + active participants in live sessions
         participant_count = sum(
-            session.stopped_participant_count 
-            for session in sessions 
+            session.stopped_participant_count
+            for session in sessions
             if session.is_stopped
         )
-        
-        # Check if there's at least one live (running) session
-        # Live session = is_stopped=False AND start_datetime is not NULL
-        has_live_session = any(
-            not session.is_stopped and session.start_datetime is not None
-            for session in sessions
-        )
-        
+        live_sessions = [
+            s for s in sessions
+            if not s.is_stopped and s.start_datetime is not None
+        ]
+        for live_session in live_sessions:
+            participant_count += SessionParticipantRepository.count_active(db, live_session.id)
+
+        # Count live (active) sessions
+        session_count = len(live_sessions)
+        has_live_session = session_count > 0
+
         workspace_response = WorkspaceResponse.model_validate(workspace)
         workspace_response.participant_count = participant_count
+        workspace_response.session_count = session_count
         workspace_response.has_live_session = has_live_session
         
         # Apply fields filter if specified
