@@ -25,7 +25,7 @@ router = APIRouter(tags=["Authentication"])
     status_code=status.HTTP_201_CREATED,
     summary="Register a new user",
     description="""
-    Register a new user with email and password.
+    TEST Register a new user with email and password.
     
     After registration, a verification code will be sent to the provided email.
     The user must verify their email before they can log in.
