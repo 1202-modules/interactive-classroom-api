@@ -8,8 +8,11 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 # Use absolute imports with explicit path
+from sqlalchemy.exc import OperationalError, InterfaceError
+
 from core.config import settings
 from endpoints.routes import api_router
 
@@ -85,6 +88,24 @@ app.add_middleware(
 
 # Include API router
 app.include_router(api_router)
+
+
+def _handle_db_unavailable(request, exc):
+    """Log full error server-side, return short 503 to client."""
+    logger.error(
+        "database_unavailable",
+        path=request.url.path,
+        error=str(exc.orig) if getattr(exc, "orig", None) else str(exc),
+        exc_info=True,
+    )
+    return JSONResponse(
+        status_code=503,
+        content={"detail": "Service temporarily unavailable. Please try again later."},
+    )
+
+
+app.add_exception_handler(OperationalError, _handle_db_unavailable)
+app.add_exception_handler(InterfaceError, _handle_db_unavailable)
 
 
 @app.get("/", tags=["Health"])
