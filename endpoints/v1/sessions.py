@@ -263,6 +263,9 @@ async def list_session_participants(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Session not found",
             )
+        workspace = WorkspaceRepository.get_by_id(db, session.workspace_id)
+        merged = SessionRepository.get_merged_settings(session, workspace.template_settings or {}) if workspace else {}
+        max_participants = merged.get("max_participants")
         participants = SessionParticipantService.list_participants(db, session_id)
         active_count = SessionParticipantService.get_active_count(db, session_id)
         items = [SessionParticipantItem(**p) for p in participants]
@@ -270,6 +273,7 @@ async def list_session_participants(
             participants=items,
             total=len(items),
             active_count=active_count,
+            max_participants=max_participants,
         )
     except HTTPException:
         raise
@@ -305,6 +309,35 @@ async def patch_session_participant(
     try:
         SessionParticipantService.set_banned(
             db, session_id, participant_id, current_user["user_id"], body.is_banned
+        )
+    except ValueError as e:
+        msg = str(e).lower()
+        if "not found" in msg or "not authorized" in msg:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.delete(
+    "/sessions/{session_id}/participants/{participant_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Kick participant (lecturer)",
+    description="Remove participant from session (soft-delete). Their token becomes invalid. Lecturer only.",
+    responses={
+        204: {"description": "Participant kicked"},
+        401: {"description": "Not authenticated"},
+        404: {"description": "Session or participant not found"},
+    },
+)
+async def kick_session_participant(
+    session_id: int,
+    participant_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Kick participant. Lecturer only."""
+    try:
+        SessionParticipantService.kick(
+            db, session_id, participant_id, current_user["user_id"]
         )
     except ValueError as e:
         msg = str(e).lower()

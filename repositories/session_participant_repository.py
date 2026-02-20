@@ -106,11 +106,10 @@ class SessionParticipantRepository:
         return p
 
     @staticmethod
-    def update_banned(
-        db: DBSession, participant_id: int, is_banned: bool
-    ) -> Optional[SessionParticipant]:
-        """Update is_banned for participant (no commit)."""
+    def soft_delete(db: DBSession, participant_id: int) -> Optional[SessionParticipant]:
+        """Soft-delete participant (no commit). Sets is_deleted=True, deleted_at=now. Token becomes invalid."""
         p = SessionParticipantRepository.get_by_id(db, participant_id)
         if p:
-            p.is_banned = is_banned
+            p.is_deleted = True
+            p.deleted_at = datetime.now(timezone.utc)
         return p

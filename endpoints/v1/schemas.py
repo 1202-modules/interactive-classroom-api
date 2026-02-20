@@ -637,6 +637,7 @@ class SessionParticipantItem(BaseModel):
     id: int
     display_name: Optional[str] = None
     participant_type: str
+    guest_email: Optional[str] = Field(None, description="Email for guest_email entry (show under name or instead of name)")
     is_active: bool
     is_banned: bool = False
     created_at: Optional[str] = Field(None, description="When the participant joined (ISO datetime)")
@@ -648,10 +649,11 @@ class SessionParticipantPatchRequest(BaseModel):
 
 
 class SessionParticipantsResponse(BaseModel):
-    """List of participants with active count."""
+    """List of participants with active count and max limit."""
     participants: List["SessionParticipantItem"]
     total: int
     active_count: int
+    max_participants: Optional[int] = Field(None, description="Max participants from session/workspace settings")
 
 
 # Questions module

@@ -32,7 +32,6 @@ class SessionParticipant(Base):
     is_deleted = Column(Boolean, default=False, nullable=False, index=True)
     deleted_at = Column(DateTime(timezone=True), nullable=True)
     is_banned = Column(Boolean, default=False, nullable=False)
-    is_banned = Column(Boolean, default=False, nullable=False)
 
     session = relationship("Session", back_populates="session_participants")
     user = relationship("User", backref="session_participations")

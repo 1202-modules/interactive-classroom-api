@@ -103,7 +103,7 @@ class SessionParticipantService:
 
     @staticmethod
     def list_participants(db: DBSession, session_id: int) -> List[Dict[str, Any]]:
-        """List participants with display_name, participant_type, is_active."""
+        """List participants with display_name, participant_type, is_active, guest_email."""
         participants = SessionParticipantRepository.get_by_session_id(db, session_id)
         threshold = datetime.now(timezone.utc) - timedelta(seconds=HEARTBEAT_ACTIVE_SECONDS)
         result = []
@@ -113,6 +113,7 @@ class SessionParticipantService:
                 "id": p.id,
                 "display_name": p.display_name,
                 "participant_type": p.participant_type,
+                "guest_email": p.guest_email,
                 "is_active": is_active,
                 "is_banned": p.is_banned,
                 "created_at": p.created_at.isoformat() if p.created_at else None,
@@ -139,4 +140,21 @@ class SessionParticipantService:
         if not participant or participant.session_id != session_id:
             raise ValueError("Participant not found")
         SessionParticipantRepository.update_banned(db, participant_id, is_banned)
+        db.commit()
+
+    @staticmethod
+    def kick(
+        db: DBSession, session_id: int, participant_id: int, user_id: int
+    ) -> None:
+        """Soft-delete participant (kick). Lecturer (workspace owner) only. Commits. Token becomes invalid."""
+        session = SessionRepository.get_by_id(db, session_id)
+        if not session:
+            raise ValueError("Session not found")
+        workspace = WorkspaceRepository.get_by_id(db, session.workspace_id)
+        if not workspace or workspace.user_id != user_id:
+            raise ValueError("Not authorized")
+        participant = SessionParticipantRepository.get_by_id(db, participant_id)
+        if not participant or participant.session_id != session_id:
+            raise ValueError("Participant not found")
+        SessionParticipantRepository.soft_delete(db, participant_id)
         db.commit()
