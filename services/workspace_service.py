@@ -272,68 +272,6 @@ class WorkspaceService:
         return deleted_workspace
     
     @staticmethod
-    def sync_sessions_on_template_update(
-        db: Session,
-        workspace_id: int,
-        old_template: dict,
-        new_template: dict
-    ) -> None:
-        """
-        Synchronize all sessions in workspace when template settings are updated.
-        
-        For each session:
-        - Get current merged settings (old template + custom_settings if exists)
-        - Compare merged settings with new template recursively
-        - Update custom_settings based on differences
-        
-        Args:
-            db: Database session
-            workspace_id: Workspace ID
-            old_template: Old template settings (before update)
-            new_template: New template settings (after update)
-        """
-        from utils.settings import merge_settings, calculate_settings_diff
-        
-        # Get all sessions in workspace (including archived/deleted)
-        all_sessions = SessionRepository.get_by_workspace_id(
-            db=db,
-            workspace_id=workspace_id,
-            status=None,  # Get all statuses
-            include_deleted=True
-        )
-        
-        for session in all_sessions:
-            # If session had no custom_settings, it was using old template as-is
-            # After template update, it should use new template as-is (no custom_settings needed)
-            if session.custom_settings is None:
-                # Session was using old template, now it will use new template
-                session.custom_settings = None
-                continue
-            
-            # Session had custom_settings, need to check which ones are still relevant
-            # Get current merged settings (old template + custom_settings)
-            current_merged = merge_settings(old_template or {}, session.custom_settings or {})
-            
-            # Calculate differences: values in current_merged that differ from new_template
-            # These are the values we need to preserve as custom_settings
-            # We compare current_merged (what session currently has) vs new_template (what it should have)
-            # The diff contains values from current_merged that are different from new_template
-            new_diff = calculate_settings_diff(new_template or {}, current_merged)
-            
-            # Update custom_settings
-            if new_diff:
-                session.custom_settings = new_diff
-            else:
-                # All values now match new template, so no custom settings needed
-                session.custom_settings = None
-        
-        logger.info(
-            "sessions_synced_on_template_update",
-            workspace_id=workspace_id,
-            sessions_count=len(all_sessions)
-        )
-    
-    @staticmethod
     def update_workspace(
         db: Session,
         workspace_id: int,
@@ -343,9 +281,7 @@ class WorkspaceService:
         template_settings: Optional[dict] = None
     ) -> Optional[Workspace]:
         """
-        Update workspace.
-        
-        If template_settings is updated, synchronize all sessions in workspace.
+        Update workspace. Session settings are independent (full copy per session).
         
         Args:
             db: Database session
@@ -380,9 +316,6 @@ class WorkspaceService:
         if template_settings is not None:
             WorkspaceService.validate_template_settings(template_settings, db)
         
-        # Store old template for synchronization
-        old_template = workspace.template_settings or {}
-        
         # Update workspace
         updated_workspace = WorkspaceRepository.update(
             db=db,
@@ -394,17 +327,7 @@ class WorkspaceService:
         
         if not updated_workspace:
             return None
-        
-        # If template_settings was updated, synchronize all sessions
-        if template_settings is not None and old_template != template_settings:
-            new_template = template_settings or {}
-            WorkspaceService.sync_sessions_on_template_update(
-                db=db,
-                workspace_id=workspace_id,
-                old_template=old_template,
-                new_template=new_template
-            )
-        
+
         # Commit transaction
         db.commit()
         db.refresh(workspace)

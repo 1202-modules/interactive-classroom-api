@@ -104,9 +104,9 @@ async def list_sessions(
         # Get merged settings and participant_count for each session
         session_responses = []
         for s in sessions:
-            merged_settings = SessionRepository.get_merged_settings(s, workspace.template_settings or {})
+            session_settings = SessionRepository.get_settings(s)
             session_dict = SessionResponse.model_validate(s).model_dump()
-            session_dict['settings'] = merged_settings
+            session_dict['settings'] = session_settings
             # Always show total participant count (all participants, not just active)
             session_dict['participant_count'] = SessionParticipantRepository.count_all(db, s.id)
             session_responses.append(SessionResponse(**session_dict))
@@ -211,7 +211,7 @@ async def get_session(
             )
         
         # Get merged settings for response
-        merged_settings = SessionRepository.get_merged_settings(session, workspace.template_settings or {})
+        merged_settings = SessionRepository.get_settings(session)
         session_dict = SessionResponse.model_validate(session).model_dump()
         session_dict['settings'] = merged_settings
         session_response = SessionResponse(**session_dict)
@@ -264,7 +264,7 @@ async def list_session_participants(
                 detail="Session not found",
             )
         workspace = WorkspaceRepository.get_by_id(db, session.workspace_id)
-        merged = SessionRepository.get_merged_settings(session, workspace.template_settings or {}) if workspace else {}
+        merged = SessionRepository.get_settings(session) if session else {}
         max_participants = merged.get("max_participants")
         participants = SessionParticipantService.list_participants(db, session_id)
         active_count = SessionParticipantService.get_active_count(db, session_id)
@@ -456,10 +456,8 @@ async def create_session(
         if not fields_set:
             return {}
         
-        # Get merged settings for response
-        merged_settings = SessionRepository.get_merged_settings(session, workspace.template_settings)
         session_dict = SessionResponse.model_validate(session).model_dump()
-        session_dict['settings'] = merged_settings
+        session_dict['settings'] = SessionRepository.get_settings(session)
         session_response = SessionResponse(**session_dict)
         
         # Return only specified fields
@@ -567,7 +565,7 @@ async def update_session(
         
         # Get merged settings for response
         workspace = WorkspaceRepository.get_by_id(db, session.workspace_id)
-        merged_settings = SessionRepository.get_merged_settings(session, workspace.template_settings if workspace else None)
+        merged_settings = SessionRepository.get_settings(session)
         session_dict = SessionResponse.model_validate(session).model_dump()
         session_dict['settings'] = merged_settings
         session_response = SessionResponse(**session_dict)
@@ -734,7 +732,7 @@ async def start_session(
         
         # Get merged settings for response
         workspace = WorkspaceRepository.get_by_id(db, session.workspace_id)
-        merged_settings = SessionRepository.get_merged_settings(session, workspace.template_settings if workspace else None)
+        merged_settings = SessionRepository.get_settings(session)
         session_dict = SessionResponse.model_validate(session).model_dump()
         session_dict['settings'] = merged_settings
         session_response = SessionResponse(**session_dict)
@@ -838,7 +836,7 @@ async def stop_session(
         
         # Get merged settings for response
         workspace = WorkspaceRepository.get_by_id(db, session.workspace_id)
-        merged_settings = SessionRepository.get_merged_settings(session, workspace.template_settings if workspace else None)
+        merged_settings = SessionRepository.get_settings(session)
         session_dict = SessionResponse.model_validate(session).model_dump()
         session_dict['settings'] = merged_settings
         session_response = SessionResponse(**session_dict)
@@ -940,7 +938,7 @@ async def archive_session(
         
         # Get merged settings for response
         workspace = WorkspaceRepository.get_by_id(db, session.workspace_id)
-        merged_settings = SessionRepository.get_merged_settings(session, workspace.template_settings if workspace else None)
+        merged_settings = SessionRepository.get_settings(session)
         session_dict = SessionResponse.model_validate(session).model_dump()
         session_dict['settings'] = merged_settings
         session_response = SessionResponse(**session_dict)
@@ -1039,7 +1037,7 @@ async def unarchive_session(
         
         # Get merged settings for response
         workspace = WorkspaceRepository.get_by_id(db, session.workspace_id)
-        merged_settings = SessionRepository.get_merged_settings(session, workspace.template_settings if workspace else None)
+        merged_settings = SessionRepository.get_settings(session)
         session_dict = SessionResponse.model_validate(session).model_dump()
         session_dict['settings'] = merged_settings
         session_response = SessionResponse(**session_dict)
@@ -1108,7 +1106,7 @@ async def restore_session(
         
         # Get merged settings for response
         workspace = WorkspaceRepository.get_by_id(db, session.workspace_id)
-        merged_settings = SessionRepository.get_merged_settings(session, workspace.template_settings if workspace else None)
+        merged_settings = SessionRepository.get_settings(session)
         session_dict = SessionResponse.model_validate(session).model_dump()
         session_dict['settings'] = merged_settings
         session_response = SessionResponse(**session_dict)

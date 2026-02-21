@@ -297,7 +297,7 @@ class SessionResponse(BaseModel):
     is_stopped: bool
     status: str
     passcode: Optional[str] = None  # Session passcode (6 characters)
-    settings: Optional[Dict[str, Any]] = None  # Computed merged settings (template + custom)
+    settings: Optional[Dict[str, Any]] = None  # Session settings (full copy)
     created_at: datetime
     updated_at: datetime
     is_deleted: bool = Field(default=False)
@@ -317,7 +317,7 @@ class SessionCreateRequest(BaseModel):
     """Schema for creating session."""
     name: str = Field(..., min_length=1, max_length=200, description="Session name", example="Lecture 1")
     description: Optional[str] = Field(None, max_length=1000, description="Session description", example="Introduction to the course")
-    settings: Optional[Dict[str, Any]] = Field(None, description="Session settings (JSON). Will create custom_settings if different from template.", example={"default_session_duration_min": 60, "max_participants": 50})
+    settings: Optional[Dict[str, Any]] = Field(None, description="Session settings (JSON). Merged with workspace template at creation; stored in full.", example={"default_session_duration_min": 60, "max_participants": 50})
 
     class Config:
         json_schema_extra = {
@@ -336,7 +336,7 @@ class SessionUpdateRequest(BaseModel):
     """Schema for updating session."""
     name: Optional[str] = Field(None, min_length=1, max_length=200, description="Session name", example="Updated Lecture 1")
     description: Optional[str] = Field(None, max_length=1000, description="Session description", example="Updated description")
-    settings: Optional[Dict[str, Any]] = Field(None, description="Session settings (JSON). Updates will create custom_settings if different from template.", example={"poll_duration": 45})
+    settings: Optional[Dict[str, Any]] = Field(None, description="Session settings (JSON). Full replace.", example={"poll_duration": 45})
 
     class Config:
         json_schema_extra = {

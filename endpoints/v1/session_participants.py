@@ -10,7 +10,6 @@ from core.auth import verify_token
 from repositories.session_repository import SessionRepository
 from repositories.session_module_repository import SessionModuleRepository
 from repositories.workspace_repository import WorkspaceRepository
-from repositories.workspace_repository import WorkspaceRepository
 from repositories.user_repository import UserRepository
 from services.session_participant_service import SessionParticipantService
 from endpoints.v1.schemas import (
@@ -167,8 +166,7 @@ async def list_participants_by_passcode(
     try:
         session_id = _can_access_participants_list(passcode, db, auth_token)
         session = SessionRepository.get_by_id(db, session_id)
-        workspace = WorkspaceRepository.get_by_id(db, session.workspace_id) if session else None
-        merged = SessionRepository.get_merged_settings(session, workspace.template_settings or {}) if session and workspace else {}
+        merged = SessionRepository.get_settings(session) if session else {}
         max_participants = merged.get("max_participants")
         participants = SessionParticipantService.list_participants(db, session_id)
         active_count = SessionParticipantService.get_active_count(db, session_id)

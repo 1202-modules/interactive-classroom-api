@@ -8,7 +8,6 @@ from core.auth import create_participant_token
 from core.config import settings as app_settings
 from models.session_participant import ParticipantType
 from repositories.session_repository import SessionRepository
-from repositories.workspace_repository import WorkspaceRepository
 from repositories.session_participant_repository import SessionParticipantRepository
 from repositories.guest_email_verification_repository import GuestEmailVerificationRepository
 from repositories.user_repository import UserRepository
@@ -29,10 +28,8 @@ class SessionJoinService:
     """Business logic for joining a session (anonymous, registered, guest, sso)."""
 
     @staticmethod
-    def _get_merged_settings(db: DBSession, session) -> Dict[str, Any]:
-        workspace = WorkspaceRepository.get_by_id(db, session.workspace_id)
-        template_settings = workspace.template_settings or {} if workspace else {}
-        return SessionRepository.get_merged_settings(session, template_settings)
+    def _get_session_settings(session) -> Dict[str, Any]:
+        return SessionRepository.get_settings(session)
 
     @staticmethod
     def _check_entry_mode(merged: Dict[str, Any], expected: str) -> None:
@@ -58,7 +55,7 @@ class SessionJoinService:
         session = SessionRepository.get_by_passcode(db, passcode)
         if not session:
             raise ValueError("Session not found")
-        merged = SessionJoinService._get_merged_settings(db, session)
+        merged = SessionJoinService._get_session_settings(session)
         SessionJoinService._check_entry_mode(merged, "anonymous")
         SessionJoinService._check_max_participants(db, session.id, merged)
 
@@ -90,7 +87,7 @@ class SessionJoinService:
         session = SessionRepository.get_by_passcode(db, passcode)
         if not session:
             raise ValueError("Session not found")
-        merged = SessionJoinService._get_merged_settings(db, session)
+        merged = SessionJoinService._get_session_settings(session)
         SessionJoinService._check_entry_mode(merged, "registered")
 
         user = UserRepository.get_by_id(db, user_id)
@@ -131,7 +128,7 @@ class SessionJoinService:
         session = SessionRepository.get_by_passcode(db, passcode)
         if not session:
             raise ValueError("Session not found")
-        merged = SessionJoinService._get_merged_settings(db, session)
+        merged = SessionJoinService._get_session_settings(session)
         SessionJoinService._check_entry_mode(merged, "email_code")
 
         verification = GuestEmailVerificationRepository.get_by_email(db, email)
@@ -170,7 +167,7 @@ class SessionJoinService:
         session = SessionRepository.get_by_passcode(db, passcode)
         if not session:
             raise ValueError("Session not found")
-        merged = SessionJoinService._get_merged_settings(db, session)
+        merged = SessionJoinService._get_session_settings(session)
         SessionJoinService._check_entry_mode(merged, "sso")
         if not merged.get("sso_organization_id"):
             raise ValueError("Session has no sso_organization_id configured")

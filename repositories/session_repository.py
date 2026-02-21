@@ -1,8 +1,10 @@
 """Session repository."""
+import copy
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from models.session import Session as SessionModel, SessionStatus
+from utils.settings import merge_settings
 
 
 class SessionRepository:
@@ -58,30 +60,21 @@ class SessionRepository:
         settings: Optional[Dict[str, Any]] = None,
         passcode: Optional[str] = None
     ) -> SessionModel:
-        """Create a new session (without commit)."""
+        """Create a new session (without commit). settings = full copy of template + overrides."""
         from utils.passcode import generate_unique_passcode
-        from utils.settings import calculate_settings_diff
-        
-        
-        # Generate passcode if not provided
+
         if passcode is None:
             passcode = generate_unique_passcode(db)
-        
-        # Calculate custom_settings if settings provided
-        custom_settings = None
-        if settings is not None and template_settings is not None:
-            differences = calculate_settings_diff(template_settings, settings)
-            if differences:
-                custom_settings = differences
 
-        # Session is created stopped by default
-        # updated_at will be updated automatically when is_stopped changes
+        full_settings = merge_settings(template_settings or {}, settings)
+        full_settings = copy.deepcopy(full_settings) if full_settings else None
+
         session = SessionModel(
             workspace_id=workspace_id,
             name=name,
             description=description,
             status=SessionStatus.ACTIVE.value,
-            custom_settings=custom_settings,
+            settings=full_settings,
             is_stopped=True,
             passcode=passcode
         )
@@ -168,67 +161,20 @@ class SessionRepository:
         db: Session,
         session_id: int,
         new_settings: Dict[str, Any],
-        template_settings: Dict[str, Any]
     ) -> Optional[SessionModel]:
-        """
-        Update session settings and calculate custom_settings differences.
-        
-        Args:
-            db: Database session
-            session_id: Session ID
-            new_settings: New settings to apply
-            template_settings: Current template settings from workspace
-        
-        Returns:
-            Updated session or None if not found
-        """
-        from utils.settings import calculate_settings_diff
-        
+        """Update session settings (full replace)."""
         session = SessionRepository.get_by_id(db, session_id)
         if not session:
             return None
-        
-        # Calculate differences recursively between new_settings and template_settings
-        differences = calculate_settings_diff(template_settings, new_settings)
-        
-        # Update custom_settings
-        if differences:
-            session.custom_settings = differences
-        else:
-            # If no differences, clear custom_settings
-            session.custom_settings = None
-        
+        session.settings = copy.deepcopy(new_settings) if new_settings else None
         return session
-    
+
     @staticmethod
-    def get_merged_settings(
-        session: SessionModel,
-        template_settings: Optional[Dict[str, Any]]
-    ) -> Dict[str, Any]:
-        """
-        Get merged settings for a session (template + custom overrides).
-        
-        Args:
-            session: Session model instance
-            template_settings: Template settings from workspace
-        
-        Returns:
-            Merged settings dictionary
-        
-        Raises:
-            ValueError: If workspace is deleted (template_settings would be None from deleted workspace)
-        """
-        from utils.settings import merge_settings
-        
-        # Ensure template_settings is a dict (not None)
-        if template_settings is None:
-            template_settings = {}
-        
-        # Ensure custom_settings is handled correctly (can be None)
-        custom_settings = session.custom_settings if session.custom_settings is not None else {}
-        
-        # Merge template with custom_settings recursively
-        return merge_settings(template_settings, custom_settings)
+    def get_settings(session: SessionModel) -> Dict[str, Any]:
+        """Return session settings dict. Empty dict if none."""
+        if session.settings is None:
+            return {}
+        return session.settings if isinstance(session.settings, dict) else {}
     
     @staticmethod
     def soft_delete(db: Session, session_id: int) -> Optional[SessionModel]:

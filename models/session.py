@@ -25,7 +25,7 @@ class Session(Base):
     end_datetime = Column(DateTime(timezone=True), nullable=True)
     is_stopped = Column(Boolean, default=True, nullable=False, index=True)
     status = Column(String, nullable=False, default=SessionStatus.ACTIVE.value)
-    custom_settings = Column(JSON, nullable=True)
+    settings = Column(JSON, nullable=True)  # Full copy of session settings (from workspace template at creation; independent of workspace changes)
     passcode = Column(String(6), unique=True, nullable=True, index=True)  # 6-character alphanumeric code
     active_module_id = Column(Integer, ForeignKey("session_modules.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)

@@ -375,7 +375,7 @@ class SessionService:
         new_settings: dict
     ) -> Optional[SessionModel]:
         """
-        Update session settings and calculate custom_settings differences.
+        Update session settings (full replace).
         
         Args:
             db: Database session
@@ -407,13 +407,7 @@ class SessionService:
         if workspace.status == WorkspaceStatus.ARCHIVE.value:
             raise ValueError("Cannot update settings for session in archived workspace")
         
-        # Update settings with recursive comparison
-        SessionRepository.update_settings(
-            db=db,
-            session_id=session_id,
-            new_settings=new_settings,
-            template_settings=workspace.template_settings or {}
-        )
+        SessionRepository.update_settings(db=db, session_id=session_id, new_settings=new_settings)
         
         # Commit transaction
         db.commit()

@@ -22,7 +22,7 @@ class TemplateSettings(BaseModel):
     Session defaults (template_settings) schema for workspace.
 
     These settings are applied to new sessions in the workspace.
-    Sessions can override individual values via custom_settings.
+    New sessions get a full copy of these settings at creation (session.settings).
     """
 
     default_session_duration_min: Optional[int] = Field(

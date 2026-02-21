@@ -56,8 +56,7 @@ class SessionGuestService:
         workspace = WorkspaceRepository.get_by_id(db, session.workspace_id)
         if not workspace:
             raise ValueError("Session not found")
-        template_settings = workspace.template_settings or {}
-        merged = SessionRepository.get_merged_settings(session, template_settings)
+        merged = SessionRepository.get_settings(session)
         result = {
             "id": session.id,
             "name": session.name,
@@ -115,8 +114,7 @@ class SessionGuestService:
         if not session:
             raise ValueError("Session not found")
         workspace = WorkspaceRepository.get_by_id(db, session.workspace_id)
-        template_settings = workspace.template_settings or {}
-        merged = SessionRepository.get_merged_settings(session, template_settings)
+        merged = SessionRepository.get_settings(session)
         mode = merged.get("participant_entry_mode")
         if mode != "email_code":
             raise ValueError("Session is not in email-code entry mode")
