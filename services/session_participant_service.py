@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from sqlalchemy.orm import Session as DBSession
 
 from core.auth import verify_token
-from models.session_participant import SessionParticipant
+from models.session_participant import SessionParticipant, ParticipantType
 from repositories.session_repository import SessionRepository
 from repositories.session_participant_repository import (
     SessionParticipantRepository,
@@ -24,6 +24,20 @@ def _normalize_email(email: str) -> str:
 
 class SessionParticipantService:
     """Business logic for participants: resolve, heartbeat, list."""
+
+    @staticmethod
+    def _serialize_participant(p: SessionParticipant) -> Dict[str, Any]:
+        threshold = datetime.now(timezone.utc) - timedelta(seconds=HEARTBEAT_ACTIVE_SECONDS)
+        is_active = p.last_heartbeat_at is not None and p.last_heartbeat_at >= threshold
+        return {
+            "id": p.id,
+            "display_name": p.display_name,
+            "participant_type": p.participant_type,
+            "guest_email": p.guest_email,
+            "is_active": is_active,
+            "is_banned": p.is_banned,
+            "created_at": p.created_at.isoformat() if p.created_at else None,
+        }
 
     @staticmethod
     def resolve_participant(
@@ -105,20 +119,7 @@ class SessionParticipantService:
     def list_participants(db: DBSession, session_id: int) -> List[Dict[str, Any]]:
         """List participants with display_name, participant_type, is_active, guest_email."""
         participants = SessionParticipantRepository.get_by_session_id(db, session_id)
-        threshold = datetime.now(timezone.utc) - timedelta(seconds=HEARTBEAT_ACTIVE_SECONDS)
-        result = []
-        for p in participants:
-            is_active = p.last_heartbeat_at is not None and p.last_heartbeat_at >= threshold
-            result.append({
-                "id": p.id,
-                "display_name": p.display_name,
-                "participant_type": p.participant_type,
-                "guest_email": p.guest_email,
-                "is_active": is_active,
-                "is_banned": p.is_banned,
-                "created_at": p.created_at.isoformat() if p.created_at else None,
-            })
-        return result
+        return [SessionParticipantService._serialize_participant(p) for p in participants]
 
     @staticmethod
     def get_active_count(db: DBSession, session_id: int) -> int:
@@ -158,3 +159,35 @@ class SessionParticipantService:
             raise ValueError("Participant not found")
         SessionParticipantRepository.soft_delete(db, participant_id)
         db.commit()
+
+    @staticmethod
+    def update_own_display_name(
+        db: DBSession,
+        passcode: str,
+        auth_token: Optional[str],
+        participant_token_from_body: Optional[str],
+        display_name: str,
+    ) -> Dict[str, Any]:
+        """Update own display name for anonymous or guest_email participants. Commits."""
+        participant, _ = SessionParticipantService.resolve_participant(
+            db, passcode, auth_token, participant_token_from_body
+        )
+        if participant.participant_type not in (
+            ParticipantType.ANONYMOUS.value,
+            ParticipantType.GUEST_EMAIL.value,
+        ):
+            raise ValueError("Display name can be changed only for anonymous or email-code participants")
+
+        value = (display_name or "").strip()
+        if not value:
+            raise ValueError("Display name cannot be empty")
+
+        SessionParticipantRepository.update_display_name(db, participant.id, value)
+
+        # Keep guest verification display name in sync for future joins.
+        if participant.participant_type == ParticipantType.GUEST_EMAIL.value and participant.guest_email:
+            GuestEmailVerificationRepository.upsert(db, participant.guest_email, value)
+
+        db.commit()
+        db.refresh(participant)
+        return SessionParticipantService._serialize_participant(participant)

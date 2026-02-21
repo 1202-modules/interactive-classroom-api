@@ -15,6 +15,7 @@ from services.session_participant_service import SessionParticipantService
 from endpoints.v1.schemas import (
     SessionHeartbeatRequest,
     SessionParticipantItem,
+    SessionParticipantSelfPatchRequest,
     SessionParticipantsResponse,
 )
 import structlog
@@ -181,6 +182,48 @@ async def list_participants_by_passcode(
         raise
     except Exception as e:
         logger.error("list_participants_error", passcode=passcode, error=str(e), exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
+        )
+
+
+@router.patch(
+    "/sessions/by-passcode/{passcode}/participants/me",
+    response_model=SessionParticipantItem,
+    summary="Update own participant profile (by passcode)",
+    description="Allows anonymous and email-code participants to change their display name.",
+    responses={
+        200: {"description": "Participant updated"},
+        400: {"description": "Invalid display name or unsupported participant type"},
+        401: {"description": "Not authenticated"},
+        404: {"description": "Session or participant not found"},
+    },
+)
+async def patch_own_participant_by_passcode(
+    passcode: str,
+    body: SessionParticipantSelfPatchRequest,
+    db: Session = Depends(get_db),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(optional_bearer),
+):
+    auth_token = _get_auth_token(credentials)
+    if not auth_token:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required")
+    try:
+        updated = SessionParticipantService.update_own_display_name(
+            db=db,
+            passcode=passcode,
+            auth_token=auth_token,
+            participant_token_from_body=None,
+            display_name=body.display_name,
+        )
+        return SessionParticipantItem(**updated)
+    except ValueError as e:
+        raise _handle_error(e)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("patch_own_participant_error", passcode=passcode, error=str(e), exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error",

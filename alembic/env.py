@@ -18,6 +18,7 @@ from models.refresh_token import RefreshToken
 from models.pending_registration import PendingRegistration
 from models.guest_email_verification import GuestEmailVerification
 from models.session_pending_email_code import SessionPendingEmailCode
+from models.session_join_fingerprint import SessionJoinFingerprint
 from models.organization import Organization
 from models.session_participant import SessionParticipant
 from models.session_question_message import SessionQuestionMessage, SessionQuestionMessageLike
@@ -100,4 +101,3 @@ if context.is_offline_mode():
     run_migrations_offline()
 else:
     run_migrations_online()
-

@@ -55,7 +55,7 @@ def create_guest_access_token(email: str, expires_delta: Optional[timedelta] = N
 def create_participant_token(participant_id: int, session_id: int, expires_delta: Optional[timedelta] = None) -> str:
     """Create JWT for anonymous session participant. Payload: sub=participant_id, session_id, type=session_participant."""
     if expires_delta is None:
-        expires_delta = timedelta(days=settings.GUEST_TOKEN_EXPIRE_DAYS)
+        expires_delta = timedelta(hours=settings.PARTICIPANT_TOKEN_EXPIRE_HOURS)
     to_encode = {
         "sub": str(participant_id),
         "session_id": session_id,

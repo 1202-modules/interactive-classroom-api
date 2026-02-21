@@ -21,6 +21,7 @@ def _serialize_message(
     children: Optional[List[Dict]] = None,
     *,
     allow_anonymous: bool = False,
+    liked_by_me: bool = False,
 ) -> Dict[str, Any]:
     """Serialize message for API response. When allow_anonymous and msg.is_anonymous, hide author to participants."""
     author = msg.participant.display_name if msg.participant else None
@@ -34,8 +35,10 @@ def _serialize_message(
         "parent_id": msg.parent_id,
         "content": msg.content,
         "likes_count": msg.likes_count,
+        "liked_by_me": liked_by_me,
         "is_answered": msg.is_answered,
         "created_at": msg.created_at.isoformat() if msg.created_at else None,
+        "pinned_at": msg.pinned_at.isoformat() if getattr(msg, "pinned_at", None) else None,
         "children": children or [],
     }
 
@@ -60,6 +63,7 @@ class SessionQuestionsService:
         db: DBSession,
         passcode: str,
         module_id: int,
+        participant_id: int,
         limit: int = 100,
         offset: int = 0,
     ) -> Dict[str, Any]:
@@ -77,8 +81,20 @@ class SessionQuestionsService:
             child_msgs = SessionQuestionMessageRepository.get_children(db, msg.id)
             result.append(_serialize_message(
                 msg,
-                children=[_serialize_message(c, allow_anonymous=allow_anonymous) for c in child_msgs],
+                children=[
+                    _serialize_message(
+                        c,
+                        allow_anonymous=allow_anonymous,
+                        liked_by_me=SessionQuestionMessageRepository.is_liked_by(
+                            db, c.id, participant_id
+                        ),
+                    )
+                    for c in child_msgs
+                ],
                 allow_anonymous=allow_anonymous,
+                liked_by_me=SessionQuestionMessageRepository.is_liked_by(
+                    db, msg.id, participant_id
+                ),
             ))
         return {
             "messages": result,
@@ -188,7 +204,7 @@ class SessionQuestionsService:
 
         msg = SessionQuestionMessageRepository.create(
             db, module_id, participant_id, content, parent_id,
-            is_anonymous=is_anonymous if parent_id is None else False,
+            is_anonymous=is_anonymous,
         )
         db.commit()
         db.refresh(msg)
@@ -196,14 +212,14 @@ class SessionQuestionsService:
         return _serialize_message(msg)
 
     @staticmethod
-    def add_like(
+    def toggle_like(
         db: DBSession,
         passcode: str,
         module_id: int,
         message_id: int,
         participant_id: int,
     ) -> Dict[str, Any]:
-        """Add like (idempotent). Commits."""
+        """Toggle like on message. Commits."""
         session = SessionRepository.get_by_passcode(db, passcode)
         if not session:
             raise ValueError("Session not found")
@@ -216,12 +232,19 @@ class SessionQuestionsService:
         if not msg or msg.session_module_id != module_id:
             raise ValueError("Message not found")
 
-        added = SessionQuestionMessageRepository.add_like(db, message_id, participant_id)
-        if added:
+        removed = SessionQuestionMessageRepository.remove_like(
+            db, message_id, participant_id
+        )
+        liked_by_me = False
+        if removed:
+            msg.likes_count = max(0, msg.likes_count - 1)
+        else:
+            SessionQuestionMessageRepository.add_like(db, message_id, participant_id)
             msg.likes_count += 1
+            liked_by_me = True
         db.commit()
         db.refresh(msg)
-        return {"likes_count": msg.likes_count}
+        return {"likes_count": msg.likes_count, "liked_by_me": liked_by_me}
 
     @staticmethod
     def lecturer_patch_message(

@@ -10,12 +10,16 @@ class RegisterRequest(BaseModel):
     """Schema for user registration."""
     email: EmailStr = Field(..., description="User email address", example="user@example.com")
     password: str = Field(..., min_length=8, description="User password (min 8 characters)", example="SecurePass123")
+    first_name: Optional[str] = Field(None, max_length=100, description="First name", example="John")
+    last_name: Optional[str] = Field(None, max_length=100, description="Last name", example="Doe")
 
     class Config:
         json_schema_extra = {
             "example": {
                 "email": "user@example.com",
-                "password": "SecurePass123"
+                "password": "SecurePass123",
+                "first_name": "John",
+                "last_name": "Doe",
             }
         }
 
@@ -554,11 +558,14 @@ class SessionByPasscodePublicResponse(BaseModel):
     id: int = Field(..., description="Session ID")
     name: str = Field(..., description="Session name")
     participant_entry_mode: str = Field(..., description="anonymous | registered | sso | email_code")
+    is_started: bool = Field(..., description="True when session is started and participants can join")
     email_code_domains_whitelist: List[str] = Field(default_factory=list, description="Allowed email domains for email_code")
     sso_organization_id: Optional[int] = Field(None, description="Organization ID when participant_entry_mode is sso")
     guest_authenticated: Optional[bool] = Field(None, description="True if valid guest token in Authorization — skip form, use stored token")
     email: Optional[str] = Field(None, description="Guest email when guest_authenticated")
     display_name: Optional[str] = Field(None, description="Display name when guest_authenticated")
+    participant_authenticated: Optional[bool] = Field(None, description="True if valid participant (anonymous) token — return to session without join form")
+    participant_id: Optional[int] = Field(None, description="Participant ID when participant_authenticated")
 
     class Config:
         json_schema_extra = {
@@ -566,6 +573,7 @@ class SessionByPasscodePublicResponse(BaseModel):
                 "id": 1,
                 "name": "Lecture 1",
                 "participant_entry_mode": "email_code",
+                "is_started": True,
                 "email_code_domains_whitelist": ["uni.edu", "company.com"],
             }
         }
@@ -601,6 +609,7 @@ class SessionEmailCodeVerifyResponse(BaseModel):
 class SessionJoinAnonymousRequest(BaseModel):
     """Optional display name for anonymous participant."""
     display_name: Optional[str] = Field(None, description="Display name", max_length=200)
+    fingerprint: str = Field(..., min_length=1, max_length=1024, description="Client fingerprint")
 
 
 class SessionJoinAnonymousResponse(BaseModel):
@@ -626,6 +635,11 @@ class SessionJoinGuestResponse(BaseModel):
     display_name: Optional[str] = Field(None, description="Display name; null = show translated fallback on frontend")
 
 
+class SessionJoinGuestRequest(BaseModel):
+    """Client fingerprint for email-code join."""
+    fingerprint: str = Field(..., min_length=1, max_length=1024, description="Client fingerprint")
+
+
 # Heartbeat and participants
 class SessionHeartbeatRequest(BaseModel):
     """Optional body for heartbeat. Anonymous may send participant_token here."""
@@ -648,6 +662,11 @@ class SessionParticipantPatchRequest(BaseModel):
     is_banned: Optional[bool] = Field(None, description="Ban participant for this session")
 
 
+class SessionParticipantSelfPatchRequest(BaseModel):
+    """Patch own participant profile (by passcode)."""
+    display_name: str = Field(..., min_length=1, max_length=200, description="New display name")
+
+
 class SessionParticipantsResponse(BaseModel):
     """List of participants with active count and max limit."""
     participants: List["SessionParticipantItem"]
@@ -661,7 +680,7 @@ class SessionQuestionMessageCreateRequest(BaseModel):
     """Create question message."""
     content: str = Field(..., min_length=1, description="Message content")
     parent_id: Optional[int] = Field(None, description="Parent message ID for replies")
-    is_anonymous: bool = Field(False, description="Submit as anonymous (only for top-level questions, requires allow_anonymous)")
+    is_anonymous: bool = Field(False, description="Submit as anonymous (requires allow_anonymous)")
 
 
 class SessionQuestionMessageItem(BaseModel):
@@ -673,8 +692,10 @@ class SessionQuestionMessageItem(BaseModel):
     parent_id: Optional[int] = None
     content: str
     likes_count: int
+    liked_by_me: bool = False
     is_answered: bool
     created_at: Optional[str] = None
+    pinned_at: Optional[str] = None
     children: List["SessionQuestionMessageItem"] = Field(default_factory=list)
 
 
@@ -717,4 +738,3 @@ class SessionTimerStateResponse(BaseModel):
 class SessionTimerPauseRequest(BaseModel):
     """Pause timer with remaining seconds from client."""
     remaining_seconds: int = Field(..., ge=0, description="Remaining seconds when pausing")
-

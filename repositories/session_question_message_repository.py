@@ -80,13 +80,13 @@ class SessionQuestionMessageRepository:
         parent_id: Optional[int] = None,
         is_anonymous: bool = False,
     ) -> SessionQuestionMessage:
-        """Create message (no commit). is_anonymous only applies to top-level questions (parent_id is None)."""
+        """Create message (no commit)."""
         msg = SessionQuestionMessage(
             session_module_id=session_module_id,
             participant_id=participant_id,
             content=content,
             parent_id=parent_id,
-            is_anonymous=is_anonymous if parent_id is None else False,
+            is_anonymous=is_anonymous,
         )
         db.add(msg)
         return msg
@@ -108,6 +108,27 @@ class SessionQuestionMessageRepository:
         )
         db.add(like)
         return True
+
+    @staticmethod
+    def remove_like(db: DBSession, message_id: int, participant_id: int) -> bool:
+        """Remove like if present. Returns True if removed, False if it did not exist."""
+        existing = db.query(SessionQuestionMessageLike).filter(
+            SessionQuestionMessageLike.message_id == message_id,
+            SessionQuestionMessageLike.participant_id == participant_id,
+        ).first()
+        if not existing:
+            return False
+        db.delete(existing)
+        return True
+
+    @staticmethod
+    def is_liked_by(db: DBSession, message_id: int, participant_id: int) -> bool:
+        """Check if participant has liked a message."""
+        existing = db.query(SessionQuestionMessageLike).filter(
+            SessionQuestionMessageLike.message_id == message_id,
+            SessionQuestionMessageLike.participant_id == participant_id,
+        ).first()
+        return existing is not None
 
     @staticmethod
     def update_is_answered(db: DBSession, message_id: int, is_answered: bool) -> Optional[SessionQuestionMessage]:

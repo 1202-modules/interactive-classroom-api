@@ -10,6 +10,7 @@ from repositories.session_repository import SessionRepository
 from repositories.workspace_repository import WorkspaceRepository
 from repositories.guest_email_verification_repository import GuestEmailVerificationRepository
 from repositories.session_pending_email_code_repository import SessionPendingEmailCodeRepository
+from services.session_participant_service import SessionParticipantService
 from utils.email import generate_verification_code, send_verification_email
 import structlog
 
@@ -61,6 +62,7 @@ class SessionGuestService:
             "id": session.id,
             "name": session.name,
             "participant_entry_mode": merged.get("participant_entry_mode", "anonymous"),
+            "is_started": not bool(getattr(session, "is_stopped", True)),
             "email_code_domains_whitelist": merged.get("email_code_domains_whitelist") or [],
             "sso_organization_id": merged.get("sso_organization_id"),
         }
@@ -72,6 +74,16 @@ class SessionGuestService:
                 result["guest_authenticated"] = True
                 result["email"] = guest_info["email"]
                 result["display_name"] = guest_info.get("display_name")
+        if not result.get("guest_authenticated") and guest_token:
+            try:
+                participant, _ = SessionParticipantService.resolve_participant(
+                    db, passcode, guest_token, None
+                )
+                if participant and participant.session_id == session.id:
+                    result["participant_authenticated"] = True
+                    result["participant_id"] = participant.id
+            except ValueError:
+                pass
         return result
 
     @staticmethod

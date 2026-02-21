@@ -84,7 +84,9 @@ async def register(
         result = AuthService.register(
             db=db,
             email=register_data.email,
-            password=register_data.password
+            password=register_data.password,
+            first_name=register_data.first_name,
+            last_name=register_data.last_name,
         )
         return RegisterResponse(**result)
     except ValueError as e:
@@ -528,4 +530,3 @@ async def logout(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error"
         )
-

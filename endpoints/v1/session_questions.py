@@ -60,7 +60,7 @@ async def list_question_messages(
     participant_id = _get_participant_id(passcode, db, credentials)
     try:
         result = SessionQuestionsService.list_messages(
-            db, passcode, module_id, limit=limit, offset=offset
+            db, passcode, module_id, participant_id, limit=limit, offset=offset
         )
         return SessionQuestionMessagesResponse(**result)
     except ValueError as e:
@@ -122,7 +122,7 @@ async def like_question_message(
 ):
     participant_id = _get_participant_id(passcode, db, credentials)
     try:
-        result = SessionQuestionsService.add_like(
+        result = SessionQuestionsService.toggle_like(
             db, passcode, module_id, msg_id, participant_id
         )
         return result

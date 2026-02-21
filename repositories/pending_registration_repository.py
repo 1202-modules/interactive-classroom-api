@@ -14,6 +14,8 @@ class PendingRegistrationRepository:
         db: Session,
         email: str,
         password_hash: str,
+        first_name: Optional[str],
+        last_name: Optional[str],
         verification_code: str,
         verification_code_expires_at: datetime
     ) -> PendingRegistration:
@@ -33,6 +35,8 @@ class PendingRegistrationRepository:
         pending_reg = PendingRegistration(
             email=email,
             password_hash=password_hash,
+            first_name=first_name,
+            last_name=last_name,
             verification_code=verification_code,
             verification_code_expires_at=verification_code_expires_at
         )
@@ -166,4 +170,3 @@ class PendingRegistrationRepository:
         db.commit()
         db.refresh(pending_reg)
         return pending_reg
-

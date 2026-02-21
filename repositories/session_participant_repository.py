@@ -106,6 +106,16 @@ class SessionParticipantRepository:
         return p
 
     @staticmethod
+    def update_display_name(
+        db: DBSession, participant_id: int, display_name: str
+    ) -> Optional[SessionParticipant]:
+        """Update display_name for participant (no commit)."""
+        p = SessionParticipantRepository.get_by_id(db, participant_id)
+        if p:
+            p.display_name = display_name
+        return p
+
+    @staticmethod
     def soft_delete(db: DBSession, participant_id: int) -> Optional[SessionParticipant]:
         """Soft-delete participant (no commit). Sets is_deleted=True, deleted_at=now. Token becomes invalid."""
         p = SessionParticipantRepository.get_by_id(db, participant_id)

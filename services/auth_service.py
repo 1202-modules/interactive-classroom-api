@@ -21,7 +21,9 @@ class AuthService:
     def register(
         db: Session,
         email: str,
-        password: str
+        password: str,
+        first_name: Optional[str] = None,
+        last_name: Optional[str] = None,
     ) -> Dict[str, any]:
         """
         Register a new user (pending registration until email verified).
@@ -59,6 +61,8 @@ class AuthService:
             db=db,
             email=email,
             password_hash=password_hash,
+            first_name=(first_name or "").strip() or None,
+            last_name=(last_name or "").strip() or None,
             verification_code=verification_code,
             verification_code_expires_at=expires_at
         )
@@ -121,6 +125,8 @@ class AuthService:
             db=db,
             email=pending_reg.email,
             password_hash=pending_reg.password_hash,
+            first_name=pending_reg.first_name,
+            last_name=pending_reg.last_name,
             verification_code=None,  # No longer needed
             verification_code_expires_at=None
         )
@@ -356,4 +362,3 @@ class AuthService:
         if revoked:
             logger.info("user_logged_out", refresh_token=refresh_token[:10] + "...")
         return revoked
-

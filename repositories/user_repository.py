@@ -37,6 +37,8 @@ class UserRepository:
         db: Session,
         email: str,
         password_hash: str,
+        first_name: Optional[str],
+        last_name: Optional[str],
         verification_code: str,
         verification_code_expires_at: datetime
     ) -> User:
@@ -44,6 +46,8 @@ class UserRepository:
         user = User(
             email=email,
             password_hash=password_hash,
+            first_name=first_name,
+            last_name=last_name,
             email_verified=False,
             verification_code=verification_code,
             verification_code_expires_at=verification_code_expires_at
@@ -136,4 +140,3 @@ class UserRepository:
         
         db.delete(user)
         return user
-

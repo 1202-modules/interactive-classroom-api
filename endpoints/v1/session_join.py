@@ -1,5 +1,5 @@
 """Session join endpoints (anonymous, registered, guest, sso)."""
-from fastapi import APIRouter, Body, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from core.db import get_db
@@ -8,6 +8,7 @@ from services.session_join_service import SessionJoinService
 from endpoints.v1.schemas import (
     SessionJoinAnonymousRequest,
     SessionJoinAnonymousResponse,
+    SessionJoinGuestRequest,
     SessionJoinRegisteredResponse,
     SessionJoinGuestResponse,
 )
@@ -41,12 +42,16 @@ def _handle_join_error(e: Exception, passcode: str) -> HTTPException:
 )
 async def join_anonymous(
     passcode: str,
-    body: SessionJoinAnonymousRequest | None = Body(default=None),
+    body: SessionJoinAnonymousRequest,
     db: Session = Depends(get_db),
 ):
     try:
-        display_name = (body.display_name if body else None)
-        result = SessionJoinService.join_anonymous(db, passcode, display_name)
+        result = SessionJoinService.join_anonymous(
+            db,
+            passcode,
+            body.fingerprint,
+            body.display_name,
+        )
         return SessionJoinAnonymousResponse(**result)
     except ValueError as e:
         raise _handle_join_error(e, passcode)
@@ -102,11 +107,17 @@ async def join_registered(
 )
 async def join_guest(
     passcode: str,
+    body: SessionJoinGuestRequest,
     db: Session = Depends(get_db),
     current_guest: dict = Depends(get_current_guest_user),
 ):
     try:
-        result = SessionJoinService.join_guest(db, passcode, current_guest["email"])
+        result = SessionJoinService.join_guest(
+            db,
+            passcode,
+            current_guest["email"],
+            body.fingerprint,
+        )
         return SessionJoinGuestResponse(**result)
     except ValueError as e:
         raise _handle_join_error(e, passcode)

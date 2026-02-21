@@ -45,6 +45,8 @@ class Settings(BaseSettings):
 
     # Guest (email-code session) token TTL
     GUEST_TOKEN_EXPIRE_DAYS: int = 90
+    PARTICIPANT_TOKEN_EXPIRE_HOURS: int = 7
+    SESSION_JOIN_FINGERPRINT_LIMIT: int = 3
 
     # Anonymous participant display
     ANONYMOUS_SLUG_PREFIX: str = "anon_"
@@ -56,4 +58,3 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
-
