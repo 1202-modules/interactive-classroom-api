@@ -32,6 +32,7 @@ def _serialize_message(
         "session_module_id": msg.session_module_id,
         "participant_id": msg.participant_id,
         "author_display_name": author,
+        "is_anonymous": bool(getattr(msg, "is_anonymous", False)),
         "parent_id": msg.parent_id,
         "content": msg.content,
         "likes_count": msg.likes_count,

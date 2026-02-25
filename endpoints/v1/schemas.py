@@ -689,6 +689,7 @@ class SessionQuestionMessageItem(BaseModel):
     session_module_id: int
     participant_id: int
     author_display_name: Optional[str] = None
+    is_anonymous: bool = False
     parent_id: Optional[int] = None
     content: str
     likes_count: int

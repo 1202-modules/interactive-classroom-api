@@ -57,19 +57,23 @@ class SessionModuleService:
         if workspace_module.workspace_id != session.workspace_id:
             raise ValueError("Workspace module not found or access denied")
         
-        # Auto-generate name with suffix if not provided
+        # Auto-generate name if not provided:
+        # - first module keeps base name (no suffix)
+        # - next duplicates use " (1)", " (2)", ...
         if name is None:
             base_name = workspace_module.name
             # Find existing modules with same base name
             existing_modules = SessionModuleRepository.get_by_session_id(db, session_id)
             existing_names = {m.name for m in existing_modules}
-            
-            # Find next available suffix
-            suffix = 1
-            while f"{base_name} ({suffix})" in existing_names:
-                suffix += 1
-            
-            name = f"{base_name} ({suffix})"
+
+            if base_name not in existing_names:
+                name = base_name
+            else:
+                # Find next available suffix
+                suffix = 1
+                while f"{base_name} ({suffix})" in existing_names:
+                    suffix += 1
+                name = f"{base_name} ({suffix})"
         
         # Copy module from workspace
         module = SessionModuleRepository.copy_from_workspace_module(
@@ -303,4 +307,3 @@ class SessionModuleService:
         """
         from utils.module_settings import validate_module_settings as validate_settings
         validate_settings(module_type, settings)
-
