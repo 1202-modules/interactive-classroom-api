@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy.orm import Session as DBSession
 
 from models.workspace_module import ModuleType
+from models.session_participant import ParticipantType
 from repositories.session_module_repository import SessionModuleRepository
 from repositories.session_repository import SessionRepository
 from repositories.workspace_repository import WorkspaceRepository
@@ -74,9 +75,11 @@ class SessionQuestionsService:
             raise ValueError("Session not found")
         module = SessionQuestionsService._validate_questions_module(db, module_id, session.id)
         opts = get_questions_settings(module.settings)
+        session_settings = SessionRepository.get_settings(session)
+        entry_mode = session_settings.get("participant_entry_mode", "anonymous")
 
         messages = SessionQuestionMessageRepository.list_by_module(db, module_id, limit=limit, offset=offset)
-        allow_anonymous = opts.get("allow_anonymous", False)
+        allow_anonymous = opts.get("allow_anonymous", False) or entry_mode == "anonymous"
         result = []
         for msg in messages:
             child_msgs = SessionQuestionMessageRepository.get_children(db, msg.id)
@@ -190,7 +193,11 @@ class SessionQuestionsService:
             if count >= opts["max_questions_total"]:
                 raise ValueError("Maximum number of questions reached")
 
-        if is_anonymous and not opts.get("allow_anonymous", False):
+        can_send_anonymous = (
+            opts.get("allow_anonymous", False)
+            or participant.participant_type == ParticipantType.ANONYMOUS.value
+        )
+        if is_anonymous and not can_send_anonymous:
             raise ValueError("Anonymous questions are disabled for this module")
 
         if opts["cooldown_enabled"] and opts["cooldown_seconds"] > 0:
